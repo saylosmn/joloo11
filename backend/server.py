@@ -1349,6 +1349,36 @@ async def set_webhook():
     return r.json()
 
 
+@api_router.get("/config")
+async def public_config():
+    """Client settings the app fetches at launch.
+
+    OAuth *client ids* are public by design — they ship inside every app binary.
+    Serving them means the app and this server can never disagree about which
+    Google clients are valid, and changing one does not require a new build.
+    The client *secret* is never used by this project and is not exposed here.
+    """
+    return {
+        "google": {
+            "webClientId": os.environ.get("GOOGLE_CLIENT_ID_WEB") or None,
+            "iosClientId": os.environ.get("GOOGLE_CLIENT_ID_IOS") or None,
+            "androidClientId": os.environ.get("GOOGLE_CLIENT_ID_ANDROID") or None,
+        },
+        "pro": {
+            "price": PRO_PRICE_MNT,
+            "currency": "MNT",
+            "qpay": qpay.configured,
+            "bankTransfer": BANK_TRANSFER_ENABLED,
+        },
+        "limits": {
+            "freeCategoryLimit": FREE_CATEGORY_LIMIT,
+            "freeDailyQuestions": FREE_DAILY_QUESTIONS,
+            "freeDailyExams": FREE_DAILY_EXAMS,
+        },
+        "exam": {"size": EXAM_SIZE, "durationSeconds": EXAM_DURATION_SECONDS},
+    }
+
+
 @api_router.get("/health")
 async def health():
     return {"status": "ok"}
