@@ -13,6 +13,7 @@ HERE = Path(__file__).resolve().parent
 SUITES = [
     "test_google_auth.py",
     "test_public_config.py",
+    "test_cors.py",
     "test_qpay_client.py",
     "test_qpay_flow.py",
     "test_bank_flow.py",

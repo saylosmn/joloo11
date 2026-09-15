@@ -1397,7 +1397,13 @@ if IMAGES_DIR.exists():
 
 # The app authenticates with a Bearer header, not cookies, so credentialed
 # requests are not needed — and "*" with credentials is rejected by browsers anyway.
-CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()]
+# An unset OR blank CORS_ORIGINS means "no restriction". Without the `or ["*"]`
+# a blank value produced an empty allow-list, which silently blocked every
+# browser origin — the API kept working from curl and from the mobile app (neither
+# enforces CORS) while the web build could not reach it at all.
+CORS_ORIGINS = [
+    o.strip() for o in os.environ.get("CORS_ORIGINS", "*").split(",") if o.strip()
+] or ["*"]
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=CORS_ORIGINS != ["*"],
