@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LoadingView, PrimaryButton } from "@/src/components/ui";
 import { ApiError, api } from "@/src/lib/api";
 import { useAuth, type User } from "@/src/lib/auth";
+import { TOTAL_CATEGORIES, TOTAL_QUESTIONS } from "@/src/lib/content";
 import { useNameCheck } from "@/src/lib/use-name-check";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
@@ -59,7 +60,8 @@ function LoginScreen() {
           </View>
           <Text style={styles.loginTitle}>Замын хөдөлгөөний{"\n"}дүрмийн шалгалт</Text>
           <Text style={styles.loginSubtitle}>
-            800 асуулт, 33 бүлэг. Давтаж бэлдээд жинхэнэ шалгалтдаа өөртөө итгэлтэй ор.
+            {TOTAL_QUESTIONS} асуулт, {TOTAL_CATEGORIES} бүлэг. Давтаж бэлдээд жинхэнэ
+            шалгалтдаа өөртөө итгэлтэй ор.
           </Text>
 
           <View style={styles.loginFeatures}>

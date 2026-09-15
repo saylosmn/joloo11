@@ -10,10 +10,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Badge, Card, LoadingView, ProgressBar } from "@/src/components/ui";
 import { api } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";
+import { TOTAL_CATEGORIES, TOTAL_QUESTIONS } from "@/src/lib/content";
 import { DEFAULT_DAILY_GOAL, getDailyGoal, setDailyGoal } from "@/src/lib/progress-local";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
-const TOTAL_QUESTIONS = 800;
 const GOAL_STEPS = [10, 20, 30, 50];
 
 export default function Home() {
@@ -112,7 +112,7 @@ export default function Home() {
             testID="action-practice"
             icon="albums"
             title="Бүлгээр давтах"
-            subtitle="33 бүлэг"
+            subtitle={`${TOTAL_CATEGORIES} бүлэг`}
             color={colors.brandPrimary}
             onPress={() => router.push("/(tabs)/categories")}
           />

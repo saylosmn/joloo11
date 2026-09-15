@@ -1,200 +1,218 @@
 [
   {
     "category_id": "cat_01",
-    "name": "1. Нийтлэг үндэслэл, нэр томъёо",
+    "name": "1. Нийтлэг үндэслэл, нэр томьёо",
     "order": 0,
-    "questionCount": 45
+    "questionCount": 37
   },
   {
     "category_id": "cat_02",
-    "name": "2. Жолоочийн үүрэг",
+    "name": "2. Механикжсан тээврийн хэрэгслийн ангилал",
     "order": 1,
-    "questionCount": 40
+    "questionCount": 11
   },
   {
     "category_id": "cat_03",
-    "name": "3. Явган зорчигчийн үүрэг",
+    "name": "3. Жолоочийн үүрэг",
     "order": 2,
-    "questionCount": 25
+    "questionCount": 29
   },
   {
     "category_id": "cat_04",
-    "name": "4. Зорчигчийн үүрэг",
+    "name": "4. Тусгай дуут болон гэрлэн дохио ажиллуулсан тээврийн хэрэгсэл",
     "order": 3,
-    "questionCount": 10
+    "questionCount": 13
   },
   {
     "category_id": "cat_05",
-    "name": "5. Замын хөдөлгөөн зохицуулах дохио",
+    "name": "5. Явган зорчигчийн үүрэг",
     "order": 4,
-    "questionCount": 45
+    "questionCount": 21
   },
   {
     "category_id": "cat_06",
-    "name": "6. Дуут болон ослын дохио",
+    "name": "6. Тээврийн хэрэгслээр зорчигчийн үүрэг",
     "order": 5,
-    "questionCount": 20
+    "questionCount": 10
   },
   {
     "category_id": "cat_07",
-    "name": "7. Хөдөлгөөн эхлэх, чиг өөрчлөх",
+    "name": "7. Замын тэмдэг ба тэмдэглэл",
     "order": 6,
-    "questionCount": 46
+    "questionCount": 8
   },
   {
     "category_id": "cat_08",
-    "name": "8. Тээврийн хэрэгсэл байрлан явах",
+    "name": "8. Замын хөдөлгөөн зохицуулах дохио",
     "order": 7,
-    "questionCount": 35
-  },
-  {
-    "category_id": "cat_09",
-    "name": "9. Хурд",
-    "order": 8,
-    "questionCount": 35
-  },
-  {
-    "category_id": "cat_10",
-    "name": "10. Гүйцэж түрүүлэх",
-    "order": 9,
-    "questionCount": 30
-  },
-  {
-    "category_id": "cat_11",
-    "name": "11. Түр буюу удаан зогсох",
-    "order": 10,
-    "questionCount": 30
-  },
-  {
-    "category_id": "cat_12",
-    "name": "12. Уулзвар нэвтрэх",
-    "order": 11,
-    "questionCount": 50
-  },
-  {
-    "category_id": "cat_13",
-    "name": "13. Явган хүний гарц нэвтрэх",
-    "order": 12,
-    "questionCount": 30
-  },
-  {
-    "category_id": "cat_14",
-    "name": "14. Төмөр замын гарам нэвтрэх",
-    "order": 13,
-    "questionCount": 25
-  },
-  {
-    "category_id": "cat_15",
-    "name": "15. Гадна талын гэрэлтүүлэх хэрэгсэл",
-    "order": 14,
-    "questionCount": 25
-  },
-  {
-    "category_id": "cat_16",
-    "name": "16. Хорооллын доторх хөдөлгөөн",
-    "order": 15,
-    "questionCount": 8
-  },
-  {
-    "category_id": "cat_17",
-    "name": "17. Тууш замын хөдөлгөөн",
-    "order": 16,
-    "questionCount": 8
-  },
-  {
-    "category_id": "cat_18",
-    "name": "18. Цуваагаар явах",
-    "order": 17,
-    "questionCount": 6
-  },
-  {
-    "category_id": "cat_19",
-    "name": "19. Жолоодлогын дадлага",
-    "order": 18,
-    "questionCount": 6
-  },
-  {
-    "category_id": "cat_20",
-    "name": "20. Механикжсан тээврийн хэрэгсэл чирэх",
-    "order": 19,
-    "questionCount": 12
-  },
-  {
-    "category_id": "cat_21",
-    "name": "21. Хүн тээвэрлэх",
-    "order": 20,
-    "questionCount": 10
-  },
-  {
-    "category_id": "cat_22",
-    "name": "22. Ачаа тээвэрлэх",
-    "order": 21,
-    "questionCount": 10
-  },
-  {
-    "category_id": "cat_23",
-    "name": "23. Унадаг дугуй, мопед, ердийн хөсөг, мал туух",
-    "order": 22,
-    "questionCount": 10
-  },
-  {
-    "category_id": "cat_24",
-    "name": "1. Анхааруулах тэмдэг",
-    "order": 23,
     "questionCount": 48
   },
   {
-    "category_id": "cat_25",
-    "name": "2. Хориглох тэмдэг",
-    "order": 24,
-    "questionCount": 41
+    "category_id": "cat_09",
+    "name": "9. Анхааруулах дохио ба таних тэмдэг",
+    "order": 8,
+    "questionCount": 23
   },
   {
-    "category_id": "cat_26",
-    "name": "3. Дарааллын тэмдэг",
-    "order": 25,
-    "questionCount": 14
+    "category_id": "cat_10",
+    "name": "10. Хөдөлгөөн эхлэх болон чиг өөрчлөх",
+    "order": 9,
+    "questionCount": 26
   },
   {
-    "category_id": "cat_27",
-    "name": "4. Заах тэмдэг",
-    "order": 26,
-    "questionCount": 20
+    "category_id": "cat_11",
+    "name": "11. Тээврийн хэрэгсэл байрлан явах",
+    "order": 10,
+    "questionCount": 18
   },
   {
-    "category_id": "cat_28",
-    "name": "5. Мэдээлэх тэмдэг",
-    "order": 27,
-    "questionCount": 55
-  },
-  {
-    "category_id": "cat_29",
-    "name": "6. Нэмэлт тэмдэг",
-    "order": 28,
+    "category_id": "cat_12",
+    "name": "12. Тээврийн хэрэгслийн хурд",
+    "order": 11,
     "questionCount": 19
   },
   {
-    "category_id": "cat_30",
-    "name": "7. Хэвтээ тэмдэглэл",
-    "order": 29,
-    "questionCount": 22
+    "category_id": "cat_13",
+    "name": "13. Гүйцэж түрүүлэх, өөдөөс ирэх тээврийн хэрэгсэлтэй зөрөх",
+    "order": 12,
+    "questionCount": 26
   },
   {
-    "category_id": "cat_31",
-    "name": "8. Босоо тэмдэглэл",
-    "order": 30,
-    "questionCount": 7
+    "category_id": "cat_14",
+    "name": "14. Түр ба удаан зогсох",
+    "order": 13,
+    "questionCount": 28
   },
   {
-    "category_id": "cat_32",
-    "name": "2 дугаар хавсралт. Техникийн шаардлага",
-    "order": 31,
+    "category_id": "cat_15",
+    "name": "15. Уулзвар нэвтрэх",
+    "order": 14,
+    "questionCount": 91
+  },
+  {
+    "category_id": "cat_16",
+    "name": "16. Явган хүний гарц нэвтрэх",
+    "order": 15,
+    "questionCount": 20
+  },
+  {
+    "category_id": "cat_17",
+    "name": "17. Төмөр замын гарам нэвтрэх",
+    "order": 16,
+    "questionCount": 18
+  },
+  {
+    "category_id": "cat_18",
+    "name": "18. Гадна талын гэрэлтүүлэх хэрэгслийг хэрэглэх",
+    "order": 17,
+    "questionCount": 17
+  },
+  {
+    "category_id": "cat_19",
+    "name": "19. Хорооллын доторх хөдөлгөөн",
+    "order": 18,
     "questionCount": 8
   },
   {
-    "category_id": "cat_33",
-    "name": "3 дугаар хавсралт. Таних тэмдэг, үүрэг",
-    "order": 32,
+    "category_id": "cat_20",
+    "name": "20. Тууш замын хөдөлгөөн",
+    "order": 19,
+    "questionCount": 8
+  },
+  {
+    "category_id": "cat_21",
+    "name": "21. Жолоодлогын дадлага хийх",
+    "order": 20,
     "questionCount": 5
+  },
+  {
+    "category_id": "cat_22",
+    "name": "22. Механикжсан тээврийн хэрэгслийг чирэх",
+    "order": 21,
+    "questionCount": 11
+  },
+  {
+    "category_id": "cat_23",
+    "name": "23. Хүн тээвэрлэх",
+    "order": 22,
+    "questionCount": 8
+  },
+  {
+    "category_id": "cat_24",
+    "name": "24. Ачаа тээвэрлэх",
+    "order": 23,
+    "questionCount": 9
+  },
+  {
+    "category_id": "cat_25",
+    "name": "25. Унадаг дугуй, мопедоор хөдөлгөөнд оролцох",
+    "order": 24,
+    "questionCount": 11
+  },
+  {
+    "category_id": "cat_26",
+    "name": "26. Ердийн хөсөг, мал туух",
+    "order": 25,
+    "questionCount": 6
+  },
+  {
+    "category_id": "cat_27",
+    "name": "27. Замын хөдөлгөөнд оролцогчоос бусад иргэн, хуулийн этгээдийн үүрэг",
+    "order": 26,
+    "questionCount": 3
+  },
+  {
+    "category_id": "cat_28",
+    "name": "1-р хавсралт. Анхааруулах тэмдэг",
+    "order": 27,
+    "questionCount": 54
+  },
+  {
+    "category_id": "cat_29",
+    "name": "1-р хавсралт. Хориглох тэмдэг",
+    "order": 28,
+    "questionCount": 59
+  },
+  {
+    "category_id": "cat_30",
+    "name": "1-р хавсралт. Дарааллын тэмдэг",
+    "order": 29,
+    "questionCount": 15
+  },
+  {
+    "category_id": "cat_31",
+    "name": "1-р хавсралт. Заах тэмдэг",
+    "order": 30,
+    "questionCount": 27
+  },
+  {
+    "category_id": "cat_32",
+    "name": "1-р хавсралт. Мэдээлэх тэмдэг",
+    "order": 31,
+    "questionCount": 41
+  },
+  {
+    "category_id": "cat_33",
+    "name": "1-р хавсралт. Үйлчилгээний тэмдэг",
+    "order": 32,
+    "questionCount": 6
+  },
+  {
+    "category_id": "cat_34",
+    "name": "1-р хавсралт. Нэмэлт тэмдэг",
+    "order": 33,
+    "questionCount": 23
+  },
+  {
+    "category_id": "cat_35",
+    "name": "2-р хавсралт. Замын тэмдэглэл",
+    "order": 34,
+    "questionCount": 29
+  },
+  {
+    "category_id": "cat_36",
+    "name": "4-р хавсралт. Тээврийн хэрэгслийн техникийн эвдрэл, гэмтэл",
+    "order": 35,
+    "questionCount": 14
   }
 ]

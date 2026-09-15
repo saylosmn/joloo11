@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton } from "@/src/components/ui";
 import { ApiError, api, imageUrl } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";
+import { TOTAL_CATEGORIES } from "@/src/lib/content";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
 type BankInfo = {
@@ -122,7 +123,9 @@ export function BankTransferModal({
               <Ionicons name="checkmark-circle" size={44} color={colors.success} />
             </View>
             <Text style={styles.title}>Баталгаажлаа!</Text>
-            <Text style={styles.sub}>PRO эрх идэвхжлээ. Бүх 33 бүлэг нээгдлээ.</Text>
+            <Text style={styles.sub}>
+              PRO эрх идэвхжлээ. Бүх {TOTAL_CATEGORIES} бүлэг нээгдлээ.
+            </Text>
             <View style={styles.actions}>
               <PrimaryButton title="Эхлэх" onPress={onClose} testID="bank-done" />
             </View>

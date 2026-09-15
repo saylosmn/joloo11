@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { PrimaryButton } from "@/src/components/ui";
 import { ApiError, api } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";
+import { TOTAL_CATEGORIES } from "@/src/lib/content";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
 type BankUrl = { name: string; description: string; logo: string; link: string };
@@ -103,7 +104,9 @@ export function QPayModal({ onClose, onPaid }: { onClose: () => void; onPaid?: (
               <Ionicons name="checkmark-circle" size={44} color={colors.success} />
             </View>
             <Text style={styles.title}>Төлбөр амжилттай!</Text>
-            <Text style={styles.sub}>PRO эрх идэвхжлээ. Бүх 33 бүлэг нээгдлээ.</Text>
+            <Text style={styles.sub}>
+              PRO эрх идэвхжлээ. Бүх {TOTAL_CATEGORIES} бүлэг нээгдлээ.
+            </Text>
             <View style={styles.actions}>
               <PrimaryButton title="Эхлэх" onPress={onClose} testID="qpay-done" />
             </View>

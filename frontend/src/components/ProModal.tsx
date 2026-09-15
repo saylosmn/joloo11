@@ -9,6 +9,7 @@ import { BankTransferModal } from "@/src/components/BankTransferModal";
 import { QPayModal } from "@/src/components/QPayModal";
 import { PrimaryButton } from "@/src/components/ui";
 import { api } from "@/src/lib/api";
+import { TOTAL_CATEGORIES } from "@/src/lib/content";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
 const BOT = "@zhd_exam_bot";
@@ -66,11 +67,12 @@ export function ProModal({
         </View>
         <Text style={styles.title}>PRO болон бүх боломжийг нээ</Text>
         <Text style={styles.sub}>
-          {reason || "Бүх 33 бүлэг, хязгааргүй асуулт, хязгааргүй шалгалт, алдаатай асуултын горим."}
+          {reason ||
+            `Бүх ${TOTAL_CATEGORIES} бүлэг, хязгааргүй асуулт, хязгааргүй шалгалт, алдаатай асуултын горим.`}
         </Text>
 
         <View style={styles.benefits}>
-          <Benefit text="Бүх 33 бүлэг нээлттэй" />
+          <Benefit text={`Бүх ${TOTAL_CATEGORIES} бүлэг нээлттэй`} />
           <Benefit text="Өдрийн асуултын хязгааргүй" />
           <Benefit text="Хязгааргүй шалгалт" />
           <Benefit text="Алдаатай асуултын давталт" />
