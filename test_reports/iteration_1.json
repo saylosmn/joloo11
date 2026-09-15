@@ -1,0 +1,41 @@
+{
+  "summary": "Comprehensive backend + light frontend testing for Mongolian driving-license exam prep app (ЗХД шалгалт). Executed 33 pytest tests hitting the public EXPO_PUBLIC_BACKEND_URL — ALL 33 PASSED (100%). Verified: health, auth gating (401 without/with bad token, 200 for FREE/PRO), /api/me/limits (isPro, freeDailyQuestions=30, freeDailyExams=1, freeCategoryLimit=2), /api/categories (33 categories; first 2 unlocked and rest locked for FREE, all unlocked for PRO), category access (cat_1 OK for FREE, cat_3 403 for FREE / 200 for PRO, cat_9999 → 404), practice/answer correctness+explanation, wrong-questions gating (403 FREE / 200 PRO), bookmark toggle round-trip, exam/start returns durationSeconds=1500 & 20 questions with NO correctKey/explanation leaked, exam/submit computes score/percent/passed (>=75%) and stores attempt visible in /api/attempts, /api/stats shape, profile check-name validation (spaces, <3, >20, non-latin all rejected; taken vs own-name handled), set-name duplicate → 409 (case-insensitive), set-name invalid → 400, Telegram webhook: 403 without/with wrong secret, non-admin refused (200 no mutation), admin /check works, admin /pro + /unpro flips free_tester's isPro in DB (verified via /auth/me) and plain 'FREE_TESTER' (mixed case) activates. Final safety test confirms free_tester=FREE and pro_tester=PRO are preserved. Frontend login screen renders correctly in mobile viewport with 'Google-ээр нэвтрэх' testID button (334x54, well above 44pt), Mongolian Cyrillic text, calm blue theme and Ionicons rendered — no red screen or JS errors.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/telegram/webhook", "issue": "Non-admin users get HTTP 200 (server sends 'no permission' via Telegram sendMessage). This is intentional per Telegram webhook contract, but from an API-testing perspective the caller cannot distinguish refusal from acceptance without inspecting Telegram side. Consider returning {ok:true, refused:true} in body for observability."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [],
+    "react_native_issues": [
+      {"component": "TouchableOpacity/View", "issue": "Console warning: 'props.pointerEvents is deprecated. Use style.pointerEvents'. React Native web deprecation. Reference: emitted at initial index load. Non-blocking but should be migrated."}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_backend.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Migrate `pointerEvents` prop usages to `style={{ pointerEvents: ... }}` to silence RN deprecation warning.",
+    "(Optional observability) Have /api/telegram/webhook include a refused flag in body for non-admin so callers can verify without going through Telegram."
+  ],
+  "critical_code_review_comments": [
+    "server.py is 657 lines — approaching the 700-line soft limit. Consider splitting Telegram handlers, auth, and exam/practice routes into modules.",
+    "FREE daily question limit only increments dailyUsage.questionsAnswered on the FIRST time a question is answered (existing==None). Re-answering the same question doesn't bump the counter. That is intentional but worth an inline comment for future maintainers.",
+    "get_daily_usage / bump_daily use today's date in UTC. Users in Mongolia (UTC+8) will see the daily counter reset at 08:00 local time, not midnight. Consider timezone-aware date bucketing (Asia/Ulaanbaatar) for a nicer UX.",
+    "In /api/categories, the questions collection is scanned in full to compute per-category correct counts on every request. Fine at 800 questions but consider aggregation pipeline if the dataset grows.",
+    "auth_me signature has an unused `user=None` parameter (harmless but dead code)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_backend.py (new — 33 pytest cases)"
+  ],
+  "success_rate": {"backend": "100% (33/33)", "frontend": "login screen smoke test passed (Google OAuth intentionally not automated)"},
+  "seed_data_creation": "No new seed data created. Used pre-seeded TESTTOKEN_FREE (free_tester, FREE) and TESTTOKEN_PRO (pro_tester, PRO). Telegram tests activate then immediately deactivate free_tester so final DB state is unchanged (verified by test_zz_final_state_preserved).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Reuse /app/backend/tests/test_backend.py. Base URL is auto-loaded from /app/frontend/.env EXPO_PUBLIC_BACKEND_URL. Tests are order-independent except test_zz_final_state_preserved which should run last (alphabetical zz prefix). The suite is idempotent — Telegram tests always restore free_tester to FREE. FREE daily-question 429 limit was NOT exercised end-to-end (would require answering 30 unique new questions and would consume the FREE user's daily quota); the logic was verified via code review (server.py lines 293-297). Google OAuth on the frontend cannot be automated — only the login screen render was verified.",
+  "rca_of_issue": "N/A — no bugs found in the tested scope."
+}

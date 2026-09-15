@@ -1,0 +1,200 @@
+[
+  {
+    "category_id": "cat_01",
+    "name": "1. Нийтлэг үндэслэл, нэр томъёо",
+    "order": 0,
+    "questionCount": 45
+  },
+  {
+    "category_id": "cat_02",
+    "name": "2. Жолоочийн үүрэг",
+    "order": 1,
+    "questionCount": 40
+  },
+  {
+    "category_id": "cat_03",
+    "name": "3. Явган зорчигчийн үүрэг",
+    "order": 2,
+    "questionCount": 25
+  },
+  {
+    "category_id": "cat_04",
+    "name": "4. Зорчигчийн үүрэг",
+    "order": 3,
+    "questionCount": 10
+  },
+  {
+    "category_id": "cat_05",
+    "name": "5. Замын хөдөлгөөн зохицуулах дохио",
+    "order": 4,
+    "questionCount": 45
+  },
+  {
+    "category_id": "cat_06",
+    "name": "6. Дуут болон ослын дохио",
+    "order": 5,
+    "questionCount": 20
+  },
+  {
+    "category_id": "cat_07",
+    "name": "7. Хөдөлгөөн эхлэх, чиг өөрчлөх",
+    "order": 6,
+    "questionCount": 46
+  },
+  {
+    "category_id": "cat_08",
+    "name": "8. Тээврийн хэрэгсэл байрлан явах",
+    "order": 7,
+    "questionCount": 35
+  },
+  {
+    "category_id": "cat_09",
+    "name": "9. Хурд",
+    "order": 8,
+    "questionCount": 35
+  },
+  {
+    "category_id": "cat_10",
+    "name": "10. Гүйцэж түрүүлэх",
+    "order": 9,
+    "questionCount": 30
+  },
+  {
+    "category_id": "cat_11",
+    "name": "11. Түр буюу удаан зогсох",
+    "order": 10,
+    "questionCount": 30
+  },
+  {
+    "category_id": "cat_12",
+    "name": "12. Уулзвар нэвтрэх",
+    "order": 11,
+    "questionCount": 50
+  },
+  {
+    "category_id": "cat_13",
+    "name": "13. Явган хүний гарц нэвтрэх",
+    "order": 12,
+    "questionCount": 30
+  },
+  {
+    "category_id": "cat_14",
+    "name": "14. Төмөр замын гарам нэвтрэх",
+    "order": 13,
+    "questionCount": 25
+  },
+  {
+    "category_id": "cat_15",
+    "name": "15. Гадна талын гэрэлтүүлэх хэрэгсэл",
+    "order": 14,
+    "questionCount": 25
+  },
+  {
+    "category_id": "cat_16",
+    "name": "16. Хорооллын доторх хөдөлгөөн",
+    "order": 15,
+    "questionCount": 8
+  },
+  {
+    "category_id": "cat_17",
+    "name": "17. Тууш замын хөдөлгөөн",
+    "order": 16,
+    "questionCount": 8
+  },
+  {
+    "category_id": "cat_18",
+    "name": "18. Цуваагаар явах",
+    "order": 17,
+    "questionCount": 6
+  },
+  {
+    "category_id": "cat_19",
+    "name": "19. Жолоодлогын дадлага",
+    "order": 18,
+    "questionCount": 6
+  },
+  {
+    "category_id": "cat_20",
+    "name": "20. Механикжсан тээврийн хэрэгсэл чирэх",
+    "order": 19,
+    "questionCount": 12
+  },
+  {
+    "category_id": "cat_21",
+    "name": "21. Хүн тээвэрлэх",
+    "order": 20,
+    "questionCount": 10
+  },
+  {
+    "category_id": "cat_22",
+    "name": "22. Ачаа тээвэрлэх",
+    "order": 21,
+    "questionCount": 10
+  },
+  {
+    "category_id": "cat_23",
+    "name": "23. Унадаг дугуй, мопед, ердийн хөсөг, мал туух",
+    "order": 22,
+    "questionCount": 10
+  },
+  {
+    "category_id": "cat_24",
+    "name": "1. Анхааруулах тэмдэг",
+    "order": 23,
+    "questionCount": 48
+  },
+  {
+    "category_id": "cat_25",
+    "name": "2. Хориглох тэмдэг",
+    "order": 24,
+    "questionCount": 41
+  },
+  {
+    "category_id": "cat_26",
+    "name": "3. Дарааллын тэмдэг",
+    "order": 25,
+    "questionCount": 14
+  },
+  {
+    "category_id": "cat_27",
+    "name": "4. Заах тэмдэг",
+    "order": 26,
+    "questionCount": 20
+  },
+  {
+    "category_id": "cat_28",
+    "name": "5. Мэдээлэх тэмдэг",
+    "order": 27,
+    "questionCount": 55
+  },
+  {
+    "category_id": "cat_29",
+    "name": "6. Нэмэлт тэмдэг",
+    "order": 28,
+    "questionCount": 19
+  },
+  {
+    "category_id": "cat_30",
+    "name": "7. Хэвтээ тэмдэглэл",
+    "order": 29,
+    "questionCount": 22
+  },
+  {
+    "category_id": "cat_31",
+    "name": "8. Босоо тэмдэглэл",
+    "order": 30,
+    "questionCount": 7
+  },
+  {
+    "category_id": "cat_32",
+    "name": "2 дугаар хавсралт. Техникийн шаардлага",
+    "order": 31,
+    "questionCount": 8
+  },
+  {
+    "category_id": "cat_33",
+    "name": "3 дугаар хавсралт. Таних тэмдэг, үүрэг",
+    "order": 32,
+    "questionCount": 5
+  }
+]

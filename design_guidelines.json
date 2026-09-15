@@ -1,0 +1,203 @@
+{
+  "app_name": "Mongolian Traffic Rules Exam Prep",
+  "personality": "1 iOS-Native Clean",
+  "personality_one_liner": "A calm, highly readable, and structured learning environment that reduces cognitive load during exam preparation.",
+  "color": {
+    "surface": "#F8FAFC",
+    "onSurface": "#0F172A",
+    "surfaceSecondary": "#FFFFFF",
+    "onSurfaceSecondary": "#1E293B",
+    "surfaceTertiary": "#F1F5F9",
+    "onSurfaceTertiary": "#334155",
+    "surfaceInverse": "#1E293B",
+    "onSurfaceInverse": "#F8FAFC",
+    "brand": "#3B82F6",
+    "onBrand": "#FFFFFF",
+    "brandPrimary": "#2563EB",
+    "onBrandPrimary": "#FFFFFF",
+    "brandSecondary": "#DBEAFE",
+    "onBrandSecondary": "#1E40AF",
+    "brandTertiary": "#EFF6FF",
+    "onBrandTertiary": "#2563EB",
+    "success": "#10B981",
+    "onSuccess": "#FFFFFF",
+    "warning": "#F59E0B",
+    "onWarning": "#FFFFFF",
+    "error": "#EF4444",
+    "onError": "#FFFFFF",
+    "border": "#E2E8F0",
+    "borderStrong": "#CBD5E1",
+    "divider": "#F1F5F9",
+    "muted": "#64748B"
+  },
+  "typography": {
+    "displayFontFamily": "Manrope",
+    "textFontFamily": "Manrope",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical breathing room for reading clarity; minimum 48px touch targets for all interactive elements.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 6,
+    "md": 12,
+    "lg": 20,
+    "pill": 999
+  },
+  "shadow_tier": "1",
+  "navigation": "bottom_tabs",
+  "icon_set": "Phosphor",
+  "glassmorphism": {
+    "enabled": "true",
+    "do's": [
+      "Use glass on the bottom tab bar when content scrolls behind it",
+      "Use frosted glass overlay on the primary hero/progress card over the abstract blue background",
+      "Use glass for sticky header backgrounds during Practice and Exam modes"
+    ],
+    "dont's": [
+      "Never blur question cards or answer options",
+      "Do not use glass on dense statistics screens"
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "Auth & Profile Setup",
+      "purpose": "Google sign-in and unique profile name creation (3-20 chars).",
+      "states": {
+        "loading": "Centered spinner during name uniqueness check.",
+        "empty": "N/A",
+        "error": "Inline red helper text for taken names."
+      },
+      "layout": "Clean centered logo/icon, large Google login button. After auth, transitions to a simple form with a large text input and a sticky 'Continue' button."
+    },
+    {
+      "name": "Home (Нүүр)",
+      "purpose": "Dashboard showing overall progress and quick actions.",
+      "states": {
+        "loading": "Skeleton cards for stats.",
+        "empty": "No recent exams -> Show 'Take your first practice' illustration.",
+        "error": "Error loading progress -> Retry button."
+      },
+      "layout": "Top: Glassmorphic hero card over the abstract blue gradient showing Greeting, PRO badge, and overall completion progress bar. Middle: 2-column grid for Quick Actions (Practice Mode, Exam Mode). Bottom: List of recent exam scores."
+    },
+    {
+      "name": "Categories (Бүлэг)",
+      "purpose": "List of 33 categories with progress tracking.",
+      "states": {
+        "loading": "List of skeleton rows.",
+        "empty": "N/A",
+        "error": "Retry loading categories."
+      },
+      "layout": "Vertical list of cards. Each card displays category name, question count, and a linear progress bar. From category 3 onwards, show a 'Locked' icon for Free users and gray out the card."
+    },
+    {
+      "name": "Practice Mode",
+      "purpose": "One-by-one question learning with instant correct/wrong feedback.",
+      "states": {
+        "loading": "Spinner loading question data.",
+        "empty": "N/A",
+        "error": "Retry loading question."
+      },
+      "layout": "Sticky Header: Question X/Y and an icon to open the Question Grid sheet. Scrollable Content: Optional road sign image, Question text (16px, 1.5x line height), vertical stack of 4 Answer Options (min 48px height). Below options: Explanation text (revealed after answering). Sticky Footer: 'Next Question' button."
+    },
+    {
+      "name": "Exam Mode",
+      "purpose": "Time-pressured simulation (20 qs, 25 mins) with no instant feedback.",
+      "states": {
+        "loading": "Spinner generating random exam.",
+        "empty": "N/A",
+        "error": "Retry generating exam."
+      },
+      "layout": "Sticky Header: Countdown timer prominently displayed (red if < 5 mins). Scrollable Content: Question text and 4 Answer Options (selected state only, no correct/wrong colors). Sticky Footer: 'Next' or 'Submit Exam' button."
+    },
+    {
+      "name": "Exam Results",
+      "purpose": "Summary of exam performance and review of mistakes.",
+      "states": {
+        "loading": "Calculating score.",
+        "empty": "N/A",
+        "error": "N/A"
+      },
+      "layout": "Hero section: Large score percentage (Green for pass, Red for fail). Below: Scrollable list of incorrectly answered questions showing the user's choice (red) and the correct choice (green)."
+    },
+    {
+      "name": "Statistics (Статистик)",
+      "purpose": "Detailed performance metrics and history.",
+      "states": {
+        "loading": "Skeleton metric cards.",
+        "empty": "Take an exam to see stats.",
+        "error": "Retry loading stats."
+      },
+      "layout": "Top: 2x2 grid of key metrics (Total answered, Correct %, Average Time, Exams passed). Below: Bar chart or list of per-category performance. Bottom: History of last 10 exams."
+    },
+    {
+      "name": "Profile (Профайл)",
+      "purpose": "User management, PRO upgrade, and app settings.",
+      "states": {
+        "loading": "Loading profile.",
+        "empty": "N/A",
+        "error": "Error loading user data."
+      },
+      "layout": "Top: Large display of unique Profile Name with a 'Copy' icon button next to it. Free/PRO status pill. Middle: Action list (Edit Name, Upgrade to PRO, Light/Dark theme toggle). Bottom: Logout button (red)."
+    }
+  ],
+  "images": {
+    "home_hero_gradient": {
+      "url": "https://images.unsplash.com/photo-1645811791231-279658fb46dc?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwxfHxjYWxtJTIwYmx1ZSUyMHNtb290aCUyMG1pbmltYWwlMjBncmFkaWVudCUyMHRleHR1cmV8ZW58MHx8fHwxNzg4OTgxNTM4fDA&ixlib=rb-4.1.0&q=85",
+      "dark": "https://images.unsplash.com/photo-1614850523011-8f49ffc73908?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NTYxODl8MHwxfHNlYXJjaHwxfHxhYnN0cmFjdCUyMGJsdWUlMjBncmFkaWVudHxlbnwwfHx8fDE3ODg5ODE1MzR8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Calm blue abstract gradient background"
+    },
+    "study_empty_state": {
+      "url": "https://images.unsplash.com/photo-1587135991058-8816b028691f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA1NzV8MHwxfHNlYXJjaHwxfHxwZXJzb24lMjBzdHVkeWluZyUyMG5vdGVib29rfGVufDB8fHx8MTc4ODk4MTUzNHww&ixlib=rb-4.1.0&q=85",
+      "alt": "Person studying a notebook"
+    },
+    "road_sign_example": {
+      "url": "https://images.unsplash.com/photo-1618737739013-aed8938604fb?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDk1NzZ8MHwxfHNlYXJjaHwxfHxyb2FkJTIwc2lnbnxlbnwwfHx8fDE3ODg5ODE1MzR8MA&ixlib=rb-4.1.0&q=85",
+      "alt": "Stop road sign example"
+    }
+  },
+  "instructions_to_main_agent": [
+    "CYRILLIC TYPOGRAPHY: Ensure the font (Manrope) is loaded correctly. Question text MUST use `lg` (16px) font size with 1.5x line height for optimal Mongolian Cyrillic readability. Do not make the text smaller.",
+    "ANSWER OPTION COMPONENT (CRITICAL): Each option must have a minHeight of 48px. State management is strictly defined: 1) Default: surfaceSecondary bg, border outline, unfilled circle icon. 2) Selected (Exam Mode): brandTertiary bg, brandPrimary border and text, filled circle/check icon. 3) Correct (Practice): successSubtle (10% opacity success color) bg, success border, success check-circle icon. 4) Wrong (Practice): errorSubtle (10% opacity error color) bg, error border, error x-circle icon.",
+    "ICONS WITH COLOR: State colors (Correct=Green, Wrong=Red) MUST be paired with an icon change (check vs x) to be accessible. Never rely on color alone.",
+    "BOTTOM NAVIGATION: Implement exactly 5 tabs: Нүүр (Home), Бүлэг (Categories), Шалгалт (Exam), Статистик (Stats), Профайл (Profile). Use Phosphor icons (filled for active, outline for inactive).",
+    "PRO UPGRADE MODAL: Use `@gorhom/bottom-sheet` for this. The modal must clearly display the user's unique Profile Name with a one-tap Copy button, instructing them to send it to the bot.",
+    "PROGRESS BARS: Use a rounded container (`surfaceTertiary`) with an inner filled view (`brandPrimary`) representing the percentage. Use across Home and Category cards.",
+    "QUESTION GRID NAVIGATION: In Practice mode, the header should have a button that opens a bottom sheet showing a grid of numbers (1-20 or 1-total) to quickly jump to questions.",
+    "PRACTICE MODE EXPLANATION: The explanation text should appear *below* the answer options ONLY after the user has made a selection.",
+    "FREE vs PRO LOCK: In the Categories list, visually lock all categories past index 1 (the 3rd category). Gray them out (opacity 0.6) and replace the progress bar/count with a Lock icon."
+  ],
+  "haptics": {
+    "primary_button_press": "impactLight",
+    "answer_option_select": "selection",
+    "practice_correct_answer": "notificationSuccess",
+    "practice_wrong_answer": "notificationError",
+    "tab_change": "selection",
+    "copy_profile_name": "impactMedium"
+  }
+}

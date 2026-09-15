@@ -1,0 +1,86 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+#
+# Render offers Postgres and Key-Value, not MongoDB, so the database comes from
+# MongoDB Atlas (the free M0 tier is enough to start). Everything else runs here.
+#
+# Deploy: Render Dashboard -> New -> Blueprint -> pick this repo.
+# Then fill in the values marked `sync: false` under the service's Environment tab.
+
+services:
+  - type: web
+    name: zhd-shalgalt-api
+    runtime: python
+    plan: free
+    region: singapore # closest region to Mongolia
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+
+      # ---- Database (MongoDB Atlas) ----
+      # mongodb+srv://<user>:<password>@<cluster>.mongodb.net/?retryWrites=true&w=majority
+      - key: MONGO_URL
+        sync: false
+      - key: DB_NAME
+        value: zhd_exam
+
+      # ---- This service's own public URL ----
+      # e.g. https://zhd-shalgalt-api.onrender.com
+      # QPay callbacks and the Telegram webhook are registered against it.
+      - key: PUBLIC_URL
+        sync: false
+
+      # ---- Google Sign-In (client IDs only, never the secret) ----
+      - key: GOOGLE_CLIENT_ID_WEB
+        sync: false
+      - key: GOOGLE_CLIENT_ID_IOS
+        sync: false
+      - key: GOOGLE_CLIENT_ID_ANDROID
+        sync: false
+      - key: SESSION_DAYS
+        value: "30"
+
+      # ---- Telegram admin bot ----
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_ADMIN_ID
+        sync: false
+      - key: TELEGRAM_WEBHOOK_SECRET
+        generateValue: true
+
+      # ---- Pricing ----
+      - key: PRO_PRICE_MNT
+        value: "19900"
+      - key: PRO_PRODUCT_NAME
+        value: ЗХД Шалгалт PRO
+      - key: INVOICE_TTL_HOURS
+        value: "24"
+
+      # ---- QPay (leave blank until the merchant contract is in place) ----
+      - key: QPAY_HOST
+        value: https://merchant.qpay.mn/v2/
+      - key: QPAY_USERNAME
+        sync: false
+      - key: QPAY_PASSWORD
+        sync: false
+      - key: QPAY_INVOICE_CODE
+        sync: false
+
+      # ---- Direct bank transfer (works without a QPay contract) ----
+      - key: BANK_NAME
+        sync: false
+      - key: BANK_ACCOUNT_NUMBER
+        sync: false
+      - key: BANK_ACCOUNT_NAME
+        sync: false
+      - key: BANK_QR_FILE
+        sync: false
+
+      # Comma-separated origins, or * for any. The app authenticates with a
+      # Bearer header rather than cookies, so * is safe here.
+      - key: CORS_ORIGINS
+        value: "*"

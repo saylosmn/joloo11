@@ -1,0 +1,19 @@
+# Development, testing and one-off scripts. Not installed on the server.
+-r requirements.txt
+
+# Offline test suites (backend/tests/offline)
+mongomock-motor>=0.0.29
+
+# Online suite (backend/tests/test_backend.py)
+pytest>=8.0.0
+pytest-xdist>=3.6.0
+requests>=2.31.0
+
+# Excel -> JSON seeding scripts (backend/scripts)
+openpyxl>=3.1.0
+
+# Linting / formatting
+black>=24.1.1
+isort>=5.13.2
+flake8>=7.0.0
+mypy>=1.8.0
