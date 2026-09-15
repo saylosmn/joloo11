@@ -9,6 +9,7 @@ import {
   useState,
   type PropsWithChildren,
 } from "react";
+import { Platform } from "react-native";
 
 import { api, clearToken, loadToken, setToken } from "@/src/lib/api";
 
@@ -41,10 +42,30 @@ type AuthState = {
 const AuthContext = createContext<AuthState | null>(null);
 
 // One OAuth client per platform, from Google Cloud Console.
+const ENV_CLIENT_IDS = {
+  web: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
+  ios: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
+  android: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
+};
+
+const ENV_NAMES = {
+  web: "EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB",
+  ios: "EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS",
+  android: "EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID",
+} as const;
+
+const platformKey = Platform.OS === "ios" ? "ios" : Platform.OS === "android" ? "android" : "web";
+const platformClientId = ENV_CLIENT_IDS[platformKey];
+
+// expo-auth-session throws outright when the platform's client id is undefined,
+// which would take the whole app down on launch. Feed it a placeholder instead
+// and disable the button — the placeholder is never sent anywhere.
+const PLACEHOLDER = "unconfigured.apps.googleusercontent.com";
+
 const CLIENT_IDS = {
-  webClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB,
-  iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS,
-  androidClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID,
+  webClientId: ENV_CLIENT_IDS.web || PLACEHOLDER,
+  iosClientId: ENV_CLIENT_IDS.ios || PLACEHOLDER,
+  androidClientId: ENV_CLIENT_IDS.android || PLACEHOLDER,
 };
 
 export function AuthProvider({ children }: PropsWithChildren) {
@@ -56,9 +77,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   // Google's signing keys and mints a session of our own.
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest(CLIENT_IDS);
 
-  const configError = CLIENT_IDS.webClientId
+  const configError = platformClientId
     ? null
-    : "Google нэвтрэлт тохируулагдаагүй байна (EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB).";
+    : `Google нэвтрэлт тохируулагдаагүй байна (${ENV_NAMES[platformKey]}).`;
 
   const refreshUser = useCallback(async () => {
     try {

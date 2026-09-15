@@ -9,14 +9,16 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "mn.zhdshalgalt.app"
+      "bundleIdentifier": "mn.zhdshalgalt.app",
+      "buildNumber": "1"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
         "backgroundColor": "#000000"
       },
-      "package": "mn.zhdshalgalt.app"
+      "package": "mn.zhdshalgalt.app",
+      "versionCode": 1
     },
     "web": {
       "bundler": "metro",

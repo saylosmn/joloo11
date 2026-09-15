@@ -374,42 +374,99 @@ cd frontend && npx tsc --noEmit && npx eslint app src --ext .ts,.tsx
 
 ## Android APK бэлдэх
 
-Апп нь backend-тэй тул APK доторх `EXPO_PUBLIC_BACKEND_URL` **deploy хийсэн backend-ийн хаяг** руу заасан байх ёстой.
+> **Дараалал чухал.** `EXPO_PUBLIC_*` хувьсагчид нь build хийх мөчид код дотор
+> шигтгэгддэг — APK гарсны дараа солих боломжгүй. Тиймээс эхлээд backend болон
+> Google OAuth-оо бэлэн болгоод, дараа нь угсарна.
 
-**1. Backend-ээ deploy хийж URL авах.** Гарсан backend URL-ээ хуулж ав.
+### 1. Урьдчилсан нөхцөл
 
-**2. `frontend/.env` дотор URL-ээ тавь:**
-```
-EXPO_PUBLIC_BACKEND_URL=https://<таны-backend>
-```
+| Юу | Яагаад |
+|---|---|
+| Backend интернэтэд гарсан байх | `localhost` нь утсан дээр **утас өөрөө** гэсэн үг. Render дээр deploy хийсэн байх ёстой. |
+| Google **Android** OAuth client | Android дээр `androidClientId` **заавал** шаардлагатай — үгүй бол нэвтрэх товч идэвхгүй. |
+| Google **Web** OAuth client | Веб хувилбарт болон Expo Go-д хэрэглэгдэнэ. |
 
-**3. APK угсрах — 2 арга:**
+### 2. Google дээр Android client үүсгэх
 
-**A. EAS Cloud (хамгийн найдвартай, локал хэрэгсэл шаардахгүй):**
+Android client-д **гарын үсгийн SHA-1** хэрэгтэй. EAS өөрөө keystore үүсгэдэг тул
+эхлээд нэг удаа credentials үүсгээд SHA-1-ээ авна:
+
 ```bash
 cd frontend
-npm i -g eas-cli          # хэрэв суулгаагүй бол
-eas login                 # Expo эрхээрээ нэвтрэх
-eas build -p android --profile preview
+npx eas-cli login
+npx eas-cli credentials -p android
 ```
-Build дуусахад Expo татаж авах APK линк өгнө.
+`Keystore: Set up a new keystore` сонгоод, гарсан **SHA1 Fingerprint**-ыг хуулна.
 
-**B. Локал (Android SDK + JDK 17 суусан өөрийн терминал дээр):**
+Дараа нь Google Cloud Console → **Credentials → Create OAuth client ID → Android**:
+
+| Талбар | Утга |
+|---|---|
+| Package name | `mn.zhdshalgalt.app` |
+| SHA-1 certificate fingerprint | дээрх EAS-ээс авсан утга |
+
+> Package нэрийг `frontend/app.json` → `expo.android.package`-ээс өөрчилж болно.
+> Өөрчилвөл Google дээрх client-ээ ч заавал шинэчилнэ.
+
+### 3. `frontend/.env` бөглөх
+
+```
+EXPO_PUBLIC_BACKEND_URL=https://<таны-service>.onrender.com
+EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB=...apps.googleusercontent.com
+EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID=...apps.googleusercontent.com
+```
+
+Мөн эдгээрийг EAS-ийн серверт ч хүргэх хэрэгтэй (build нь үүлэн дээр явдаг тул
+локал `.env` тийшээ очихгүй):
+
+```bash
+npx eas-cli env:create --name EXPO_PUBLIC_BACKEND_URL --value https://... --environment preview
+npx eas-cli env:create --name EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB --value ... --environment preview
+npx eas-cli env:create --name EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID --value ... --environment preview
+```
+
+### 4. APK угсрах
+
 ```bash
 cd frontend
-npx expo prebuild --platform android      # android/ фолдер үүсгэнэ (нэг удаа)
+npx eas-cli build -p android --profile preview
+```
+
+`preview` профайл нь **APK** гаргадаг (`eas.json` дотор тохируулсан) — шууд
+суулгаж туршихад тохиромжтой. Build дуусахад Expo татаж авах линк өгнө.
+
+Play Store-д тавихдаа `production` профайлыг ашиглана — тэр нь **AAB** гаргаж,
+`versionCode`-ыг автоматаар нэмэгдүүлнэ:
+
+```bash
+npx eas-cli build -p android --profile production
+```
+
+### 5. Шалгах
+
+APK суулгасны дараа:
+1. Нэвтрэх товч **идэвхтэй** байх ёстой. Идэвхгүй бол `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID`
+   EAS орчинд хүрээгүй байна.
+2. Google-ээр нэвтрэхэд `mn.zhdshalgalt.app:/oauthredirect` руу буцаж ирнэ.
+   «redirect_uri_mismatch» гарвал Google дээрх Android client-ийн package/SHA-1 таарахгүй байна.
+3. Асуулт ачаалагдахгүй бол `EXPO_PUBLIC_BACKEND_URL` буруу, эсвэл Render унтарсан
+   (үнэгүй багц 15 минутын дараа унтардаг, эхний хүсэлт ~50 секунд).
+
+### Локал Gradle build (өөр арга)
+
+Android SDK болон **JDK 17** суусан байх шаардлагатай (шинэ JDK дээр Gradle
+амжилтгүй болох магадлалтай):
+
+```bash
+cd frontend
+npx expo prebuild --platform android
 cd android
-./gradlew assembleRelease                 # Windows дээр: .\gradlew.bat assembleRelease
+./gradlew assembleRelease
 ```
-APK энд гарна: `frontend/android/app/build/outputs/apk/release/app-release.apk`
+APK: `frontend/android/app/build/outputs/apk/release/app-release.apk`
 
-> Тэмдэглэл: `release` build нь одоогоор **debug түлхүүрээр** гарын үсэг зурдаг тул шууд суулгаад
-> туршихад тохиромжтой. Play Store-д тавихын тулд өөрийн upload keystore үүсгэж
-> `android/app/build.gradle`-ийн `signingConfigs.release`-д тохируулна (эсвэл `eas build -p android --profile production`).
-
-> ⚠️ Энэ хөгжүүлэлтийн орчинд JVM-ийн AF_UNIX loopback хаалттай учир Gradle-ийг **энд** ажиллуулж
-> чадсангүй. Таны ердийн терминал дээр энэ асуудал байхгүй тул дээрх командууд хэвийн ажиллана.
-> `android/` төсөл, гарын үсгийн тохиргоо, `eas.json` бүгд бэлэн — зөвхөн build командыг ажиллуулна.
+> Энэ нь **debug түлхүүрээр** гарын үсэг зурдаг тул зөвхөн туршихад тохиромжтой.
+> Play Store-д EAS-ийг ашиглах нь хамаагүй хялбар.
 
 ---
 
