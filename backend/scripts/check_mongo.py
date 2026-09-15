@@ -56,6 +56,17 @@ def inspect(uri: str) -> tuple[list[str], bool]:
             )
             return problems, False  # nothing else is worth checking yet
 
+    # Replacing <db_password> but leaving the angle brackets in place is the most
+    # common way this goes wrong: the brackets travel to Atlas as part of the
+    # password and authentication fails with no hint as to why.
+    _, _, raw_password, _ = split_uri(uri)
+    if raw_password and raw_password.startswith("<") and raw_password.endswith(">"):
+        problems.append(
+            "Нууц үг `<` `>` хаалтанд байна — орлуулагчийг солихдоо хаалтуудыг нь "
+            "хамт устгах ёстой. Хаалт нь нууц үгийн хэсэг болж яваад нэвтрэлт унана."
+        )
+        return problems, False
+
     if not uri.startswith(("mongodb://", "mongodb+srv://")):
         problems.append("`mongodb://` эсвэл `mongodb+srv://`-ээр эхлэх ёстой.")
         return problems, encoding_issue
