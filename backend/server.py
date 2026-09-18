@@ -1364,6 +1364,47 @@ async def telegram_webhook(request: Request):
     return {"ok": True}
 
 
+@api_router.get("/telegram/diagnose")
+async def telegram_diagnose():
+    """Why the bot is silent, in one place. Reports whether each setting is
+    present and what Telegram itself says, without echoing any secret back."""
+    out = {
+        "tokenSet": bool(TELEGRAM_BOT_TOKEN),
+        "adminIdSet": bool(TELEGRAM_ADMIN_ID),
+        "webhookSecretSet": bool(TELEGRAM_WEBHOOK_SECRET),
+        "publicUrl": PUBLIC_URL or None,
+        "expectedWebhookUrl": f"{PUBLIC_URL}/api/telegram/webhook" if PUBLIC_URL else None,
+    }
+    if not TELEGRAM_BOT_TOKEN:
+        out["problem"] = "TELEGRAM_BOT_TOKEN тохируулаагүй байна."
+        return out
+    async with httpx.AsyncClient(timeout=15) as hc:
+        me = (await hc.get(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getMe")).json()
+        if not me.get("ok"):
+            out["problem"] = f"Token хүчингүй: {me.get('description')}"
+            return out
+        out["botUsername"] = me["result"].get("username")
+        info = (await hc.get(
+            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getWebhookInfo"
+        )).json().get("result", {})
+    out["webhook"] = {
+        "url": info.get("url") or None,
+        "pendingUpdates": info.get("pending_update_count"),
+        "lastError": info.get("last_error_message"),
+    }
+    if not info.get("url"):
+        out["problem"] = "Webhook бүртгэгдээгүй. /api/telegram/set-webhook хаягийг нээнэ үү."
+    elif info.get("url") != out["expectedWebhookUrl"]:
+        out["problem"] = "Webhook өөр хаяг руу бүртгэгдсэн байна."
+    elif info.get("last_error_message"):
+        out["problem"] = f"Telegram хүрч чадахгүй байна: {info['last_error_message']}"
+    elif not TELEGRAM_ADMIN_ID:
+        out["problem"] = "TELEGRAM_ADMIN_ID тохируулаагүй тул мэдэгдэл хаашаа ч очихгүй."
+    else:
+        out["problem"] = None
+    return out
+
+
 @api_router.get("/telegram/set-webhook")
 async def set_webhook():
     if not (TELEGRAM_BOT_TOKEN and PUBLIC_URL):
