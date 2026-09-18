@@ -1351,6 +1351,12 @@ async def telegram_webhook(request: Request):
     from_id = str(msg.get("from", {}).get("id"))
     text = msg.get("text", "")
     if from_id != str(TELEGRAM_ADMIN_ID):
+        # Printing both sides makes a mistyped TELEGRAM_ADMIN_ID obvious; without
+        # it the bot just goes quiet and there is nothing to compare against.
+        logger.warning(
+            "Telegram message from %s rejected; TELEGRAM_ADMIN_ID is %r",
+            from_id, TELEGRAM_ADMIN_ID,
+        )
         await tg_send(chat_id, "⛔ Танд энэ ботыг ашиглах эрх байхгүй.")
         return {"ok": True}
     reply = await handle_admin_command(chat_id, text)
