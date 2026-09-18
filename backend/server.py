@@ -92,6 +92,9 @@ api_router = APIRouter(prefix="/api")
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+# httpx logs every request url at INFO, and the Telegram bot token lives inside
+# the url itself — that would print the token into the logs on every call.
+logging.getLogger("httpx").setLevel(logging.WARNING)
 
 
 # ============================ Helpers ============================
