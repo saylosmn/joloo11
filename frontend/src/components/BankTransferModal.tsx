@@ -18,6 +18,7 @@ type BankInfo = {
   bankName: string;
   accountNumber: string;
   accountName: string;
+  iban?: string | null;
   amount: number;
   qrUrl?: string | null;
 };
@@ -183,6 +184,10 @@ export function BankTransferModal({
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Дансаар шилжүүлэх</Text>
             <Text style={styles.amount}>{req.amount.toLocaleString("en-US")}₮</Text>
+            <Text style={styles.lead}>
+              Мөр бүр дээр дарвал хуулагдана. Банкны аппдаа буулгаад шилжүүлээд, доод талын
+              «Шилжүүлсэн» товчийг дарна уу.
+            </Text>
 
             {bank.qrUrl ? (
               <>
@@ -195,11 +200,12 @@ export function BankTransferModal({
                   />
                 </View>
                 <Text style={styles.qrNote}>
-                  Банкны аппаараа QR-г уншуулаад дүн, гүйлгээний утгаа доорхоос хуулж бичнэ үү.
+                  Эсвэл банкны аппаараа энэ QR-г уншуулаад дүн, гүйлгээний утгаа доорхоос хуулна уу.
                 </Text>
               </>
             ) : null}
 
+            <Text style={styles.step}>1. Дансны мэдээлэл</Text>
             <Row
               label="Банк"
               value={bank.bankName}
@@ -213,20 +219,34 @@ export function BankTransferModal({
               copied={copied === "acc"}
               big
             />
+            {bank.iban ? (
+              <Row
+                label="IBAN (өөр банкнаас шилжүүлэх бол)"
+                value={bank.iban}
+                onCopy={() => copy(bank.iban!, "iban")}
+                copied={copied === "iban"}
+                big
+              />
+            ) : null}
             <Row
               label="Хүлээн авагч"
               value={bank.accountName}
               onCopy={() => copy(bank.accountName, "name")}
               copied={copied === "name"}
             />
+
+            <Text style={styles.step}>2. Дүн</Text>
             <Row
-              label="Дүн"
+              label="Шилжүүлэх дүн"
               value={String(req.amount)}
               onCopy={() => copy(String(req.amount), "amt")}
               copied={copied === "amt"}
+              big
             />
+
+            <Text style={styles.step}>3. Гүйлгээний утга</Text>
             <Row
-              label="Гүйлгээний утга (заавал)"
+              label="Заавал энэ кодыг бичнэ"
               value={req.ref}
               onCopy={() => copy(req.ref, "ref")}
               copied={copied === "ref"}
@@ -351,6 +371,22 @@ const useStyles = makeStyles((colors) => ({
     fontFamily: font.regular,
   },
   actions: { marginTop: 18, alignSelf: "stretch" },
+  lead: {
+    color: colors.onSurfaceSecondary,
+    fontSize: 13,
+    lineHeight: 20,
+    textAlign: "center",
+    marginBottom: 4,
+    fontFamily: font.regular,
+  },
+  step: {
+    color: colors.muted,
+    fontSize: 12,
+    fontFamily: font.extrabold,
+    letterSpacing: 0.6,
+    textTransform: "uppercase",
+    marginTop: 18,
+  },
   qrBox: {
     marginTop: 8,
     alignSelf: "center",

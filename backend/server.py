@@ -79,6 +79,8 @@ qpay = QPayClient(QPAY_HOST, QPAY_USERNAME, QPAY_PASSWORD, QPAY_INVOICE_CODE, QP
 BANK_NAME = os.environ.get("BANK_NAME", "")
 BANK_ACCOUNT_NUMBER = os.environ.get("BANK_ACCOUNT_NUMBER", "")
 BANK_ACCOUNT_NAME = os.environ.get("BANK_ACCOUNT_NAME", "")
+# Optional: shown as an extra copyable row for cross-bank transfers.
+BANK_IBAN = os.environ.get("BANK_IBAN", "")
 # Optional personal QR exported from your banking app, placed in backend/data/.
 BANK_QR_FILE = os.environ.get("BANK_QR_FILE", "")
 BANK_TRANSFER_ENABLED = bool(BANK_ACCOUNT_NUMBER and BANK_ACCOUNT_NAME and BANK_NAME)
@@ -1027,6 +1029,7 @@ def bank_info_public():
         "bankName": BANK_NAME,
         "accountNumber": BANK_ACCOUNT_NUMBER,
         "accountName": BANK_ACCOUNT_NAME,
+        "iban": BANK_IBAN,
         "amount": PRO_PRICE_MNT,
         "currency": "MNT",
         "qrUrl": f"/api/payments/bank/qr" if (BANK_QR_FILE and (ROOT_DIR / "data" / BANK_QR_FILE).exists()) else None,
