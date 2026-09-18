@@ -5,7 +5,10 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "zhdshalgalt",
+    "scheme": [
+      "zhdshalgalt",
+      "mn.zhdshalgalt.app"
+    ],
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
@@ -18,7 +21,7 @@
         "backgroundColor": "#000000"
       },
       "package": "mn.zhdshalgalt.app",
-      "versionCode": 1
+      "versionCode": 2
     },
     "web": {
       "bundler": "metro",
@@ -51,6 +54,12 @@
       "eas": {
         "projectId": "e5c3c6e8-1eb9-4c19-9e6e-f3642d091acc"
       }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/e5c3c6e8-1eb9-4c19-9e6e-f3642d091acc"
     }
   }
 }

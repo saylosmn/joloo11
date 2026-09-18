@@ -1167,21 +1167,38 @@ async def resolve_bank_payment(payment_id: str, approve: bool) -> str:
 # ============================ Telegram Bot ============================
 async def tg_send(chat_id, text, reply_markup=None):
     if not TELEGRAM_BOT_TOKEN or not chat_id:
+        # Silence here used to hide a missing token or admin id entirely, so a
+        # payment request would simply never reach anyone. Say which one is gone.
+        logger.error(
+            "Telegram message dropped: %s missing",
+            "TELEGRAM_BOT_TOKEN" if not TELEGRAM_BOT_TOKEN else "chat id (TELEGRAM_ADMIN_ID)",
+        )
         return
     payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
     if reply_markup:
         payload["reply_markup"] = reply_markup
-    async with httpx.AsyncClient(timeout=15) as hc:
-        await hc.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage", json=payload
-        )
+    await tg_api("sendMessage", payload)
 
 
 async def tg_api(method: str, payload: dict):
     if not TELEGRAM_BOT_TOKEN:
+        logger.error("Telegram %s skipped: TELEGRAM_BOT_TOKEN missing", method)
         return
-    async with httpx.AsyncClient(timeout=15) as hc:
-        await hc.post(f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}", json=payload)
+    try:
+        async with httpx.AsyncClient(timeout=15) as hc:
+            res = await hc.post(
+                f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/{method}", json=payload
+            )
+        # Telegram answers 200 with ok=false for things like a bad chat id, so
+        # the status code alone is not enough to call it delivered.
+        body = res.json() if res.headers.get("content-type", "").startswith("application/json") else {}
+        if not body.get("ok"):
+            logger.error(
+                "Telegram %s failed (%s): %s",
+                method, res.status_code, body.get("description") or res.text[:200],
+            )
+    except Exception as e:
+        logger.error("Telegram %s errored: %s", method, e)
 
 
 async def handle_admin_command(chat_id, text):

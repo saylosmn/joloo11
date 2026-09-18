@@ -86,12 +86,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
   };
   const platformClientId = ids[platformKey];
 
+  // No redirectUri override here: the provider derives the right one per
+  // platform (the bundle/package id on native) and the auth session catches it
+  // itself. An app-scheme url instead reaches the router as a plain deep link,
+  // which lands on "Unmatched Route" and drops the sign-in.
   const [request, response, promptAsync] = Google.useIdTokenAuthRequest({
     webClientId: ids.web || PLACEHOLDER,
     iosClientId: ids.ios || PLACEHOLDER,
     androidClientId: ids.android || PLACEHOLDER,
   });
-
   const configError = platformClientId
     ? null
     : config.isPending
