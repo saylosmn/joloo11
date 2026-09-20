@@ -611,3 +611,139 @@ header.scrolled::after{opacity:.6}
 /* ---------- widget shimmer overlay ---------- */
 .widget-card::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);pointer-events:none;transition:left .8s ease}
 .widget-card:hover::after{left:150%}
+
+/* ========== 3D ANIMATIONS & EFFECTS ========== */
+
+/* ---------- 3D perspective container ---------- */
+.perspective-container{perspective:1200px;perspective-origin:50% 50%}
+
+/* ---------- 3D tilt card ---------- */
+.card-3d{transform-style:preserve-3d;transition:transform .4s var(--ease-out-expo),box-shadow .4s var(--ease-out-expo);will-change:transform}
+.card-3d:hover{box-shadow:var(--shadow-xl),0 20px 60px rgba(99,102,241,.15)}
+.card-3d .card-3d-shine{position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,rgba(255,255,255,.15) 0%,transparent 50%,rgba(0,0,0,.05) 100%);opacity:0;transition:opacity .4s;pointer-events:none;z-index:2}
+.card-3d:hover .card-3d-shine{opacity:1}
+
+/* ---------- 3D flip card ---------- */
+.flip-card{perspective:1000px;height:180px;cursor:pointer}
+.flip-card-inner{position:relative;width:100%;height:100%;transition:transform .7s var(--ease-out-expo);transform-style:preserve-3d}
+.flip-card.flipped .flip-card-inner{transform:rotateY(180deg)}
+.flip-card-front,.flip-card-back{position:absolute;inset:0;backface-visibility:hidden;border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;text-align:center}
+.flip-card-front{background:var(--surface);border:1px solid var(--border);box-shadow:var(--shadow-card)}
+.flip-card-back{background:var(--gradient-primary);color:#fff;transform:rotateY(180deg)}
+
+/* ---------- animated gradient mesh background ---------- */
+.gradient-mesh{position:fixed;inset:0;pointer-events:none;z-index:-1;overflow:hidden}
+.gradient-mesh .mesh-blob{position:absolute;border-radius:50%;filter:blur(100px);opacity:.25;animation-timing-function:ease-in-out;animation-iteration-count:infinite}
+.gradient-mesh .blob-1{width:400px;height:400px;background:rgba(99,102,241,.3);top:-10%;left:-10%;animation:meshFloat1 20s infinite}
+.gradient-mesh .blob-2{width:350px;height:350px;background:rgba(139,92,246,.25);top:40%;right:-15%;animation:meshFloat2 25s infinite}
+.gradient-mesh .blob-3{width:300px;height:300px;background:rgba(236,72,153,.2);bottom:-5%;left:30%;animation:meshFloat3 22s infinite}
+.gradient-mesh .blob-4{width:250px;height:250px;background:rgba(6,182,212,.15);top:20%;left:40%;animation:meshFloat4 28s infinite}
+@keyframes meshFloat1{0%{transform:translate(0,0) scale(1)}25%{transform:translate(80px,50px) scale(1.1)}50%{transform:translate(30px,100px) scale(.9)}75%{transform:translate(-40px,60px) scale(1.05)}100%{transform:translate(0,0) scale(1)}}
+@keyframes meshFloat2{0%{transform:translate(0,0) scale(1)}33%{transform:translate(-60px,-40px) scale(1.15)}66%{transform:translate(40px,30px) scale(.85)}100%{transform:translate(0,0) scale(1)}}
+@keyframes meshFloat3{0%{transform:translate(0,0) rotate(0deg) scale(1)}50%{transform:translate(60px,-50px) rotate(10deg) scale(1.1)}100%{transform:translate(0,0) rotate(0deg) scale(1)}}
+@keyframes meshFloat4{0%{transform:translate(0,0) scale(1)}25%{transform:translate(-30px,40px) scale(1.08)}50%{transform:translate(50px,-20px) scale(.92)}75%{transform:translate(20px,50px) scale(1.05)}100%{transform:translate(0,0) scale(1)}}
+
+/* ---------- floating particles ---------- */
+.particles-container{position:fixed;inset:0;pointer-events:none;z-index:0;overflow:hidden}
+.particle{position:absolute;border-radius:50%;pointer-events:none;animation:particleFloat linear infinite}
+@keyframes particleFloat{0%{transform:translateY(100vh) rotate(0deg);opacity:0}10%{opacity:1}90%{opacity:1}100%{transform:translateY(-10vh) rotate(720deg);opacity:0}}
+
+/* ---------- 3D hero badge ---------- */
+.hero-3d{transform-style:preserve-3d;animation:hero3dFloat 6s ease-in-out infinite}
+@keyframes hero3dFloat{0%,100%{transform:translateY(0) rotateX(0) rotateY(0)}25%{transform:translateY(-12px) rotateX(3deg) rotateY(-3deg)}50%{transform:translateY(-6px) rotateX(-2deg) rotateY(2deg)}75%{transform:translateY(-10px) rotateX(2deg) rotateY(-1deg)}}
+
+/* ---------- morphing shape ---------- */
+.morph-shape{animation:morphBlob 8s ease-in-out infinite;border-radius:60% 40% 30% 70%/60% 30% 70% 40%}
+@keyframes morphBlob{0%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%}50%{border-radius:30% 60% 70% 40%/50% 60% 30% 60%}100%{border-radius:60% 40% 30% 70%/60% 30% 70% 40%}}
+
+/* ---------- neon glow text ---------- */
+.neon-text{text-shadow:0 0 10px rgba(99,102,241,.5),0 0 20px rgba(99,102,241,.3),0 0 40px rgba(99,102,241,.2)}
+:root[data-theme="dark"] .neon-text{text-shadow:0 0 10px rgba(129,140,248,.6),0 0 30px rgba(129,140,248,.4),0 0 60px rgba(129,140,248,.2)}
+
+/* ---------- 3D rotating cube widget ---------- */
+.cube-widget{perspective:600px;width:80px;height:80px;margin:0 auto}
+.cube{width:100%;height:100%;transform-style:preserve-3d;animation:cubeRotate 12s linear infinite}
+.cube-face{position:absolute;width:80px;height:80px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:2rem;backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.15)}
+.cube-face.front{transform:translateZ(40px);background:rgba(99,102,241,.2)}
+.cube-face.back{transform:rotateY(180deg) translateZ(40px);background:rgba(139,92,246,.2)}
+.cube-face.right{transform:rotateY(90deg) translateZ(40px);background:rgba(236,72,153,.2)}
+.cube-face.left{transform:rotateY(-90deg) translateZ(40px);background:rgba(249,115,22,.2)}
+.cube-face.top{transform:rotateX(90deg) translateZ(40px);background:rgba(16,185,129,.2)}
+.cube-face.bottom{transform:rotateX(-90deg) translateZ(40px);background:rgba(6,182,212,.2)}
+@keyframes cubeRotate{0%{transform:rotateX(0) rotateY(0)}100%{transform:rotateX(360deg) rotateY(360deg)}}
+
+/* ---------- wave divider ---------- */
+.wave-divider{position:relative;height:40px;overflow:hidden;margin:10px 0}
+.wave-divider svg{position:absolute;bottom:0;width:200%;height:100%;animation:waveSlide 8s linear infinite}
+@keyframes waveSlide{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ---------- staggered reveal on scroll ---------- */
+.reveal{opacity:0;transform:translateY(30px) scale(.96);transition:all .6s var(--ease-out-expo)}
+.reveal.visible{opacity:1;transform:translateY(0) scale(1)}
+.reveal:nth-child(2){transition-delay:.08s}
+.reveal:nth-child(3){transition-delay:.16s}
+.reveal:nth-child(4){transition-delay:.24s}
+.reveal:nth-child(5){transition-delay:.32s}
+
+/* ---------- animated border ---------- */
+.border-animate{position:relative;overflow:hidden;z-index:0}
+.border-animate::before{content:'';position:absolute;inset:-2px;background:conic-gradient(from var(--border-angle,0deg),var(--primary),var(--accent),var(--accent2),var(--primary));border-radius:inherit;z-index:-2;animation:borderRotate 4s linear infinite}
+.border-animate::after{content:'';position:absolute;inset:2px;background:var(--surface);border-radius:calc(var(--radius) - 2px);z-index:-1}
+@keyframes borderRotate{to{--border-angle:360deg}}
+@property --border-angle{syntax:'<angle>';initial-value:0deg;inherits:false}
+
+/* ---------- liquid button ---------- */
+.btn-liquid{position:relative;overflow:hidden;z-index:1}
+.btn-liquid::before{content:'';position:absolute;top:50%;left:50%;width:0;height:0;background:rgba(255,255,255,.15);border-radius:50%;transform:translate(-50%,-50%);transition:width .6s var(--ease-out-expo),height .6s var(--ease-out-expo);z-index:-1}
+.btn-liquid:hover::before{width:300%;height:300%}
+
+/* ---------- 3D stat counter ---------- */
+.stat-3d{perspective:400px}
+.stat-3d .stat-value{transform-style:preserve-3d;transition:transform .5s var(--ease-spring)}
+.stat-3d:hover .stat-value{transform:rotateX(10deg) scale(1.05)}
+
+/* ---------- glowing orbs ---------- */
+.glow-orb{position:absolute;border-radius:50%;pointer-events:none;filter:blur(60px)}
+.glow-orb.orb-primary{background:rgba(99,102,241,.15);animation:orbPulse 4s ease-in-out infinite}
+.glow-orb.orb-accent{background:rgba(139,92,246,.12);animation:orbPulse 5s ease-in-out infinite 1s}
+.glow-orb.orb-pink{background:rgba(236,72,153,.1);animation:orbPulse 6s ease-in-out infinite 2s}
+@keyframes orbPulse{0%,100%{transform:scale(1);opacity:.6}50%{transform:scale(1.3);opacity:1}}
+
+/* ---------- interactive hover depth ---------- */
+.depth-hover{transition:all .35s var(--ease-out-expo);transform-style:preserve-3d}
+.depth-hover:hover{transform:translateY(-6px) translateZ(20px);box-shadow:var(--shadow-lg),0 30px 60px rgba(99,102,241,.12)}
+.depth-hover:active{transform:translateY(-2px) translateZ(5px)}
+
+/* ---------- glassmorphic panel ---------- */
+.glass-panel{background:var(--surface-glass);backdrop-filter:blur(24px) saturate(1.8);-webkit-backdrop-filter:blur(24px) saturate(1.8);border:1px solid rgba(255,255,255,.12);box-shadow:0 8px 32px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.1)}
+
+/* ---------- spotlight effect ---------- */
+.spotlight{position:relative;overflow:hidden}
+.spotlight-glow{position:absolute;width:200px;height:200px;background:radial-gradient(circle,rgba(99,102,241,.12) 0%,transparent 70%);border-radius:50%;pointer-events:none;opacity:0;transition:opacity .3s;transform:translate(-50%,-50%)}
+.spotlight:hover .spotlight-glow{opacity:1}
+
+/* ---------- pulse ring ---------- */
+.pulse-ring{position:relative}
+.pulse-ring::before,.pulse-ring::after{content:'';position:absolute;inset:-8px;border-radius:50%;border:2px solid var(--primary);opacity:0;animation:pulseRing 2s ease-out infinite}
+.pulse-ring::after{animation-delay:1s}
+@keyframes pulseRing{0%{transform:scale(.8);opacity:.8}100%{transform:scale(1.4);opacity:0}}
+
+/* ---------- smooth entrance from different directions ---------- */
+.enter-left{animation:enterLeft .5s var(--ease-out-expo) backwards}
+.enter-right{animation:enterRight .5s var(--ease-out-expo) backwards}
+.enter-bottom{animation:enterBottom .5s var(--ease-out-expo) backwards}
+@keyframes enterLeft{from{opacity:0;transform:translateX(-40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes enterRight{from{opacity:0;transform:translateX(40px)}to{opacity:1;transform:translateX(0)}}
+@keyframes enterBottom{from{opacity:0;transform:translateY(40px)}to{opacity:1;transform:translateY(0)}}
+
+/* ---------- live clock widget ---------- */
+.clock-widget{text-align:center;padding:16px}
+.clock-display{font-size:2rem;font-weight:900;font-variant-numeric:tabular-nums;background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:.03em}
+.clock-date{font-size:.75rem;color:var(--text3);font-weight:600;margin-top:4px}
+.clock-ring{width:120px;height:120px;border-radius:50%;position:relative;margin:0 auto 12px;border:3px solid var(--surface2)}
+.clock-ring .clock-progress{position:absolute;inset:-3px;border-radius:50%;border:3px solid transparent;border-top-color:var(--primary);transition:transform 1s linear}
+
+/* ---------- streak fire widget ---------- */
+.streak-fire{position:relative;display:inline-block}
+.streak-fire .fire-particle{position:absolute;bottom:0;left:50%;width:6px;height:6px;border-radius:50%;background:#f97316;animation:fireRise 1s ease-out infinite;pointer-events:none}
+@keyframes fireRise{0%{transform:translate(-50%,0) scale(1);opacity:1}100%{transform:translate(calc(-50% + var(--drift,0px)),-40px) scale(0);opacity:0}}

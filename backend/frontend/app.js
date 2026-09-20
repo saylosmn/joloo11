@@ -1478,6 +1478,276 @@ window.addEventListener('scroll', () => {
   header.classList.toggle('scrolled', window.scrollY > 10);
 }, { passive: true });
 
+// ── 3D Tilt Effect ──────────────────────────────────────────
+function init3DTilt() {
+  document.querySelectorAll('.card-3d').forEach(card => {
+    card.addEventListener('mousemove', e => {
+      const rect = card.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
+      const rotateX = ((y - centerY) / centerY) * -8;
+      const rotateY = ((x - centerX) / centerX) * 8;
+      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
+    });
+    card.addEventListener('mouseleave', () => {
+      card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
+    });
+  });
+}
+
+// ── Spotlight Effect ────────────────────────────────────────
+function initSpotlight() {
+  document.querySelectorAll('.spotlight').forEach(el => {
+    const glow = el.querySelector('.spotlight-glow');
+    if (!glow) return;
+    el.addEventListener('mousemove', e => {
+      const rect = el.getBoundingClientRect();
+      glow.style.left = (e.clientX - rect.left) + 'px';
+      glow.style.top = (e.clientY - rect.top) + 'px';
+    });
+  });
+}
+
+// ── Floating Particles ──────────────────────────────────────
+function initParticles() {
+  const container = document.getElementById('particles');
+  if (!container || container.children.length > 0) return;
+  const colors = ['rgba(99,102,241,.3)', 'rgba(139,92,246,.25)', 'rgba(236,72,153,.2)', 'rgba(16,185,129,.2)', 'rgba(6,182,212,.25)'];
+  for (let i = 0; i < 20; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    const size = 3 + Math.random() * 5;
+    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;background:${colors[i%colors.length]};animation-duration:${12+Math.random()*18}s;animation-delay:${Math.random()*15}s`;
+    container.appendChild(p);
+  }
+}
+
+// ── Scroll Reveal ───────────────────────────────────────────
+function initScrollReveal() {
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.classList.add('visible');
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+}
+
+// ── 3D Flip Cards ───────────────────────────────────────────
+function initFlipCards() {
+  document.querySelectorAll('.flip-card').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('flipped'));
+  });
+}
+
+// ── Live Clock Widget ───────────────────────────────────────
+function buildClockWidget() {
+  return `
+    <div class="widget-card clock-widget reveal" style="animation-delay:.2s">
+      <div class="clock-ring">
+        <div class="clock-progress" id="clock-progress"></div>
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">
+          <div class="clock-display" id="live-clock"></div>
+          <div class="clock-date" id="live-date"></div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function startLiveClock() {
+  function tick() {
+    const now = new Date();
+    const el = document.getElementById('live-clock');
+    const dateEl = document.getElementById('live-date');
+    const progEl = document.getElementById('clock-progress');
+    if (!el) return;
+    el.textContent = now.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    if (dateEl) {
+      dateEl.textContent = now.toLocaleDateString('mn-MN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+    }
+    if (progEl) {
+      const sec = now.getSeconds();
+      progEl.style.transform = `rotate(${sec * 6}deg)`;
+    }
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+// ── 3D Cube Widget ──────────────────────────────────────────
+function buildCubeWidget() {
+  return `
+    <div class="widget-card reveal" style="animation-delay:.22s;text-align:center;padding:24px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;justify-content:center">
+        <div style="font-weight:800;font-size:.88rem">Сонирхолтой баримтууд</div>
+      </div>
+      <div class="cube-widget">
+        <div class="cube">
+          <div class="cube-face front">🚗</div>
+          <div class="cube-face back">📝</div>
+          <div class="cube-face right">🎯</div>
+          <div class="cube-face left">📚</div>
+          <div class="cube-face top">🏆</div>
+          <div class="cube-face bottom">⭐</div>
+        </div>
+      </div>
+      <p style="font-size:.78rem;color:var(--text2);margin-top:16px;font-weight:500;line-height:1.6">Мэдлэг бол хамгийн найдвартай жолооч</p>
+    </div>`;
+}
+
+// ── Streak Fire Widget ──────────────────────────────────────
+function buildStreakFireWidget(streak) {
+  if (streak <= 0) return '';
+  let particles = '';
+  for (let i = 0; i < 8; i++) {
+    const drift = (Math.random() - 0.5) * 20;
+    particles += `<div class="fire-particle" style="animation-delay:${i*0.12}s;--drift:${drift}px;left:calc(50% + ${(Math.random()-0.5)*30}px)"></div>`;
+  }
+  return `
+    <div class="widget-card reveal glass-panel" style="animation-delay:.25s;text-align:center;padding:24px;position:relative;overflow:visible">
+      <div class="streak-fire" style="font-size:3rem;margin-bottom:8px">
+        🔥
+        ${particles}
+      </div>
+      <div style="font-size:1.8rem;font-weight:900;color:#f97316">${streak}</div>
+      <div style="font-size:.78rem;color:var(--text3);font-weight:600">хоног дараалсан</div>
+    </div>`;
+}
+
+// ── Wave Divider ────────────────────────────────────────────
+function buildWaveDivider() {
+  return `
+    <div class="wave-divider">
+      <svg viewBox="0 0 1200 40" preserveAspectRatio="none" fill="var(--primary)" opacity=".08">
+        <path d="M0,20 C150,40 350,0 600,20 C850,40 1050,0 1200,20 L1200,40 L0,40 Z"/>
+        <path d="M0,25 C200,10 400,35 600,25 C800,15 1000,30 1200,25 L1200,40 L0,40 Z" opacity=".5"/>
+      </svg>
+    </div>`;
+}
+
+// ── Flip Card Feature Widget ────────────────────────────────
+function buildFlipCardsWidget() {
+  const cards = [
+    { front: '📝', title: '800+', desc: 'Асуулт', backTitle: 'Бүх асуулт', backDesc: 'Жинхэнэ шалгалтын бүх асуултууд' },
+    { front: '🎯', title: '36', desc: 'Бүлэг', backTitle: 'Бүх бүлэг', backDesc: 'Замын тэмдэг, дүрмүүд, анхны тусламж...' },
+  ];
+  return `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      ${cards.map((c, i) => `
+        <div class="flip-card reveal" style="animation-delay:${.18 + i * .06}s" onclick="this.classList.toggle('flipped')">
+          <div class="flip-card-inner">
+            <div class="flip-card-front" style="gap:8px">
+              <div style="font-size:2.2rem">${c.front}</div>
+              <div style="font-size:1.4rem;font-weight:900;background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${c.title}</div>
+              <div style="font-size:.72rem;color:var(--text3);font-weight:600">${c.desc}</div>
+            </div>
+            <div class="flip-card-back" style="gap:6px">
+              <div style="font-size:1rem;font-weight:800">${c.backTitle}</div>
+              <div style="font-size:.78rem;opacity:.85;line-height:1.5">${c.backDesc}</div>
+            </div>
+          </div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── Enhanced page init (called after render) ────────────────
+function initPageEffects() {
+  setTimeout(() => {
+    init3DTilt();
+    initSpotlight();
+    initScrollReveal();
+    initFlipCards();
+    if (document.getElementById('live-clock')) startLiveClock();
+  }, 100);
+}
+
+// ── Override renderHome to add 3D widgets ───────────────────
+const _origRenderHome = renderHome;
+renderHome = async function() {
+  await _origRenderHome();
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  const welcomeBanner = app.querySelector('.welcome-banner');
+  if (welcomeBanner) {
+    welcomeBanner.classList.add('card-3d', 'spotlight');
+    welcomeBanner.insertAdjacentHTML('afterbegin', '<div class="card-3d-shine"></div><div class="spotlight-glow"></div>');
+  }
+
+  app.querySelectorAll('.widget-card').forEach(w => {
+    w.classList.add('reveal', 'depth-hover');
+  });
+  app.querySelectorAll('.card').forEach(c => {
+    if (!c.classList.contains('widget-card') && !c.classList.contains('welcome-banner')) {
+      c.classList.add('reveal');
+    }
+  });
+  app.querySelectorAll('.quick-action').forEach(qa => {
+    qa.classList.add('depth-hover');
+  });
+  app.querySelectorAll('.stat-card').forEach(sc => sc.classList.add('stat-3d'));
+  app.querySelectorAll('.btn-primary').forEach(b => b.classList.add('btn-liquid'));
+
+  const catList = app.querySelector('#cat-list');
+  if (catList) {
+    catList.insertAdjacentHTML('beforebegin', buildWaveDivider());
+  }
+
+  const heatmap = app.querySelectorAll('.widget-card')[2];
+  if (heatmap) {
+    heatmap.insertAdjacentHTML('afterend', buildClockWidget() + buildCubeWidget());
+  }
+
+  const quote = app.querySelector('.widget-quote');
+  if (quote) {
+    quote.insertAdjacentHTML('afterend', buildFlipCardsWidget());
+  }
+
+  initPageEffects();
+};
+
+// ── Override renderStats to add effects ─────────────────────
+const _origRenderStats = renderStats;
+renderStats = async function() {
+  await _origRenderStats();
+  const app = document.getElementById('app');
+  if (!app) return;
+  app.querySelectorAll('.stat-card').forEach(sc => sc.classList.add('stat-3d', 'depth-hover'));
+  app.querySelectorAll('.widget-card').forEach(w => w.classList.add('reveal', 'depth-hover'));
+  app.querySelectorAll('.card').forEach(c => c.classList.add('reveal'));
+  initPageEffects();
+};
+
+// ── Override renderExamMenu to add effects ──────────────────
+const _origRenderExamMenu = renderExamMenu;
+renderExamMenu = async function() {
+  await _origRenderExamMenu();
+  const app = document.getElementById('app');
+  if (!app) return;
+  app.querySelectorAll('.card').forEach(c => c.classList.add('reveal', 'depth-hover'));
+  app.querySelectorAll('.stat-card').forEach(sc => sc.classList.add('stat-3d'));
+  app.querySelectorAll('.quick-action').forEach(qa => qa.classList.add('depth-hover'));
+  app.querySelectorAll('.btn-primary').forEach(b => b.classList.add('btn-liquid'));
+  initPageEffects();
+};
+
+// ── Override showLogin to add 3D hero ───────────────────────
+const _origShowLogin = showLogin;
+showLogin = function() {
+  _origShowLogin();
+  const hero = document.querySelector('.login-hero');
+  if (hero) hero.classList.add('hero-3d');
+  document.querySelectorAll('.login-feat').forEach(f => f.classList.add('depth-hover'));
+  const title = document.querySelector('.login-screen h1');
+  if (title) title.classList.add('neon-text');
+  initPageEffects();
+};
+
 // ── Init ────────────────────────────────────────────────────
 initTheme();
+initParticles();
 initApp();
