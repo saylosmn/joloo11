@@ -2,8 +2,8 @@
 <html lang="mn">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#f0f2f8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#f4f1e9">
 <meta name="description" content="Замын хөдөлгөөний дүрмийн шалгалтад бэлдэх хамгийн хялбар арга. 800+ асуулт, 36 бүлэг, дэлгэрэнгүй статистик.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -13,34 +13,27 @@
 <title>ЗХД Шалгалт — Жолооны шалгалтад бэлд</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/frontend/style.css">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
-  .app-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
-  .app-loading .logo-pulse{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;animation:pulse 1.5s infinite}
-  .app-loading .logo-pulse svg{color:#fff;width:40px;height:40px}
-  .app-loading p{color:#94a3b8;font-size:.85rem;font-weight:500}
+  .app-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:18px}
+  .app-loading .logo-pulse{width:68px;height:68px;border-radius:20px;background:linear-gradient(180deg,#26282f,#16171b);display:flex;align-items:center;justify-content:center;animation:pulse 1.5s infinite}
+  .app-loading .logo-pulse svg{color:#fff;width:34px;height:34px}
+  .app-loading p{color:#8d8f97;font-size:.8rem;font-weight:500;letter-spacing:.02em}
 </style>
 </head>
 <body>
 
-<!-- Animated gradient mesh background -->
-<div class="gradient-mesh" id="gradient-mesh">
-  <div class="mesh-blob blob-1"></div>
-  <div class="mesh-blob blob-2"></div>
-  <div class="mesh-blob blob-3"></div>
-  <div class="mesh-blob blob-4"></div>
-</div>
-
-<!-- Floating particles -->
-<div class="particles-container" id="particles"></div>
+<!-- Backdrop: one soft aura plus a fine grain, nothing that moves. -->
+<div class="page-aura"></div>
+<div class="page-grain"></div>
 
 <!-- Header -->
 <header id="app-header" style="display:none">
 <div class="container inner">
   <div class="logo">
-    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
     ЗХД Шалгалт
   </div>
   <div class="header-right" id="header-right">
@@ -57,7 +50,7 @@
 <div class="container" id="app">
   <div class="app-loading">
     <div class="logo-pulse">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
     </div>
     <p>Ачаалж байна...</p>
   </div>

@@ -40,7 +40,7 @@ function pageTransition(callback) {
 function showConfetti() {
   const container = document.createElement('div');
   container.className = 'confetti-container';
-  const colors = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#3b82f6','#eab308'];
+  const colors = ['#2f52dd','#12798a','#3f7d42','#b07d16','#b1553a','#71519c','#c9871f'];
   for (let i = 0; i < 50; i++) {
     const piece = document.createElement('div');
     piece.className = 'confetti-piece';
@@ -100,23 +100,400 @@ function showSkeleton(count = 4) {
   return html;
 }
 
+/* ══════════════════════════════════════════════════════════════════════════
+   Асуултын UX — үсгийн хэмжээ, зураг томруулах, дэлгэц дүүрэн горим,
+   хариултын дараах автомат шилжилт, гар товчлуур.
+   ══════════════════════════════════════════════════════════════════════════ */
+
+const ICON = {
+  expand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3H5a2 2 0 00-2 2v4"/><path d="M15 3h4a2 2 0 012 2v4"/><path d="M9 21H5a2 2 0 01-2-2v-4"/><path d="M15 21h4a2 2 0 002-2v-4"/></svg>',
+  shrink: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  minus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+  close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 109-9 9 9 0 00-6.36 2.64L3 8"/><polyline points="3 3 3 8 8 8"/></svg>',
+  fast: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 19 22 12 13 5 13 19"/><polygon points="2 19 11 12 2 5 2 19"/></svg>',
+};
+
+// ── Үсгийн хэмжээ ───────────────────────────────────────────
+const Q_SCALES = [1, 1.15, 1.32, 1.52];
+let qScaleIdx = Math.min(Q_SCALES.length - 1, Math.max(0, parseInt(localStorage.getItem('qScale') || '0', 10) || 0));
+
+function applyQScale() {
+  document.documentElement.style.setProperty('--q-scale', String(Q_SCALES[qScaleIdx]));
+  document.querySelectorAll('.q-tool-step').forEach(el => {
+    el.textContent = `${qScaleIdx + 1}/${Q_SCALES.length}`;
+  });
+}
+
+function cycleQScale() {
+  qScaleIdx = (qScaleIdx + 1) % Q_SCALES.length;
+  localStorage.setItem('qScale', String(qScaleIdx));
+  applyQScale();
+}
+
+// ── Автомат шилжилт ─────────────────────────────────────────
+function autoNextOn() { return localStorage.getItem('autoNext') !== '0'; }
+
+function toggleAutoNext() {
+  localStorage.setItem('autoNext', autoNextOn() ? '0' : '1');
+  const on = autoNextOn();
+  document.querySelectorAll('.q-tool-auto').forEach(b => b.classList.toggle('on', on));
+  toast(on ? '⚡ Автомат шилжилт асаалттай' : 'Автомат шилжилт унтраалаа');
+}
+
+let autoNextTimer = null;
+
+function cancelAutoNext() {
+  if (autoNextTimer) { clearTimeout(autoNextTimer); autoNextTimer = null; }
+}
+
+/** Сонгосон хариулт дээр дүүрэх шугам зурж, дараа нь `go()`-г дуудна. */
+function scheduleAutoNext(delay, go) {
+  cancelAutoNext();
+  if (!autoNextOn()) return;
+  const picked = document.querySelector('.q-options .q-option.selected, .q-options .q-option.correct');
+  if (picked && !picked.querySelector('.q-autobar')) {
+    const bar = document.createElement('span');
+    bar.className = 'q-autobar';
+    bar.style.animation = `autoBar ${delay}ms linear forwards`;
+    picked.appendChild(bar);
+  }
+  autoNextTimer = setTimeout(() => { autoNextTimer = null; go(); }, delay);
+}
+
+// ── Багажны мөр ─────────────────────────────────────────────
+function buildQTools() {
+  return `
+    <div class="q-tools">
+      <button class="q-tool" onclick="cycleQScale()" title="Асуултын үсгийн хэмжээ">
+        Aa<span class="q-tool-step">${qScaleIdx + 1}/${Q_SCALES.length}</span>
+      </button>
+      <button class="q-tool q-tool-auto ${autoNextOn() ? 'on' : ''}" onclick="toggleAutoNext()"
+              title="Хариулсны дараа автоматаар дараагийн асуулт руу шилжих">${ICON.fast}</button>
+      <button class="q-tool" onclick="openReader()" title="Асуултыг дэлгэц дүүрэн томруулах">${ICON.expand}</button>
+    </div>`;
+}
+
+function buildQFigure(url, caption) {
+  if (!url) return '';
+  return `
+    <div class="q-figure">
+      <img class="q-image" src="${url}" alt="${esc(caption || 'Асуултын зураг')}" decoding="async"
+           onclick="zoomFigure(this)">
+      <button class="q-zoom-btn" onclick="zoomFigure(this)" title="Зургийг томруулах">${ICON.expand}Томруулах</button>
+    </div>`;
+}
+
+/* Эх өгөгдөлд хариултын текст өөрийн үсгээ давтсан байдаг ("А. Аюулгүйн арал").
+   Зүүн талын үсгэн тэмдэг үүнийг аль хэдийн харуулж байгаа тул давхардлыг хасна. */
+function optionText(o) {
+  const text = String(o.text || '');
+  const m = text.match(/^\s*([А-ЯA-Za-zа-я])\s*[.)．]\s*/);
+  return m && m[1].toUpperCase() === String(o.key).toUpperCase() ? text.slice(m[0].length) : text;
+}
+
+function buildQOptions(q, st) {
+  return q.options.map((o, i) => {
+    let cls = '';
+    if (st.revealed) {
+      if (o.key === st.correctKey) cls = 'correct';
+      else if (o.key === st.selected) cls = 'wrong';
+      else cls = 'dim';
+    } else if (o.key === st.selected) cls = 'selected';
+    const lock = st.revealed || st.locked ? 'disabled' : '';
+    return `
+      <button class="q-option ${cls}" data-key="${o.key}" ${lock}
+              onclick="pickOption('${o.key}')" style="animation-delay:${i * .035}s">
+        <span class="key">${o.key}</span>
+        <span>${esc(optionText(o))}</span>
+        <span class="hint">${i + 1}</span>
+      </button>`;
+  }).join('');
+}
+
+/* `activeQ` нь одоо дэлгэц дээр харагдаж буй асуултыг тодорхойлно. Дэлгэц дүүрэн
+   горим болон гар товчлуур хоёулаа үүнээс уншина. */
+let activeQ = null;   // { q, mode:'practice'|'exam', st }
+
+function pickOption(key) {
+  if (!activeQ) return;
+  if (activeQ.mode === 'exam') examAnswer(key);
+  else answerPractice(activeQ.q.question_id, key);
+}
+
+/* ── Зураг томруулах цонх ─────────────────────────────────────
+   Хуруугаар чимхэх, дугуй эргүүлэх, давхар товших, чирэх — бүгд ажиллана. */
+const LB = { el: null, img: null, stage: null, label: null, scale: 1, x: 0, y: 0, pts: new Map(), pinch: null, lastTap: 0 };
+const LB_MIN = 1, LB_MAX = 8;
+
+function zoomFigure(el) {
+  const fig = el.closest('.q-figure') || el.parentElement;
+  const img = el.tagName === 'IMG' ? el : (fig && fig.querySelector('img'));
+  if (img) openLightbox(img.currentSrc || img.src, img.alt);
+}
+
+function openLightbox(src, caption) {
+  if (!src) return;
+  closeLightbox();
+  const el = document.createElement('div');
+  el.className = 'lightbox';
+  el.innerHTML = `
+    <div class="lightbox-bar">
+      <div class="lightbox-title">${esc(caption || 'Асуултын зураг')}</div>
+      <div class="lightbox-actions">
+        <button class="lb-btn" data-act="out" title="Жижигрүүлэх">${ICON.minus}</button>
+        <div class="lb-zoom-label">100%</div>
+        <button class="lb-btn" data-act="in" title="Томруулах">${ICON.plus}</button>
+        <button class="lb-btn" data-act="reset" title="Анхны хэмжээ">${ICON.reset}</button>
+        <button class="lb-btn" data-act="close" title="Хаах">${ICON.close}</button>
+      </div>
+    </div>
+    <div class="lightbox-stage"><img class="lightbox-img smooth" src="${src}" alt="${esc(caption || '')}" draggable="false"></div>
+    <div class="lightbox-foot">Чимхэж томруул · давхар товшиж ойрт · чирж хөдөлгө</div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+
+  LB.el = el;
+  LB.img = el.querySelector('.lightbox-img');
+  LB.stage = el.querySelector('.lightbox-stage');
+  LB.label = el.querySelector('.lb-zoom-label');
+  LB.scale = 1; LB.x = 0; LB.y = 0; LB.pts.clear(); LB.pinch = null;
+  lbApply();
+
+  el.querySelectorAll('.lb-btn').forEach(b => b.addEventListener('click', () => {
+    const act = b.dataset.act;
+    if (act === 'in') lbZoomBy(1.5);
+    else if (act === 'out') lbZoomBy(1 / 1.5);
+    else if (act === 'reset') lbSet(1, 0, 0, true);
+    else closeLightbox();
+  }));
+
+  const stage = LB.stage;
+  stage.addEventListener('wheel', lbWheel, { passive: false });
+  stage.addEventListener('pointerdown', lbDown);
+  stage.addEventListener('pointermove', lbMove);
+  stage.addEventListener('pointerup', lbUp);
+  stage.addEventListener('pointercancel', lbUp);
+  stage.addEventListener('dblclick', e => {
+    e.preventDefault();
+    lbToggleZoom(e.clientX, e.clientY);
+  });
+}
+
+function closeLightbox() {
+  const reader = document.querySelector('.lightbox.reader');
+  const el = LB.el;
+  if (!el && !reader) return;
+  if (el) { el.remove(); LB.el = null; LB.img = null; LB.stage = null; }
+  if (reader && reader !== el) reader.remove();
+  if (!document.querySelector('.lightbox')) document.body.style.overflow = '';
+}
+
+function lbApply(smooth) {
+  if (!LB.img) return;
+  LB.img.classList.toggle('smooth', !!smooth);
+  LB.img.style.transform = `translate3d(${LB.x}px,${LB.y}px,0) scale(${LB.scale})`;
+  if (LB.label) LB.label.textContent = Math.round(LB.scale * 100) + '%';
+  if (LB.stage) LB.stage.style.cursor = LB.scale > 1 ? 'grab' : 'zoom-in';
+}
+
+function lbClampPan() {
+  if (!LB.img || !LB.stage) return;
+  // Зургийг тайзны гадна бүрэн гаргахгүй барих
+  const r = LB.img.getBoundingClientRect();
+  const s = LB.stage.getBoundingClientRect();
+  const maxX = Math.max(0, (r.width - s.width) / 2);
+  const maxY = Math.max(0, (r.height - s.height) / 2);
+  LB.x = Math.max(-maxX, Math.min(maxX, LB.x));
+  LB.y = Math.max(-maxY, Math.min(maxY, LB.y));
+}
+
+function lbSet(scale, x, y, smooth) {
+  LB.scale = Math.max(LB_MIN, Math.min(LB_MAX, scale));
+  LB.x = x; LB.y = y;
+  if (LB.scale === 1) { LB.x = 0; LB.y = 0; }
+  lbApply(smooth);
+  if (LB.scale > 1) { lbClampPan(); lbApply(smooth); }
+}
+
+/** Дэлгэцийн (cx,cy) цэгийг байрандаа барьж байгаад масштабыг өөрчилнө. */
+function lbZoomAt(next, cx, cy, smooth) {
+  if (!LB.stage) return;
+  const s = LB.stage.getBoundingClientRect();
+  const ox = cx - (s.left + s.width / 2);
+  const oy = cy - (s.top + s.height / 2);
+  const k = Math.max(LB_MIN, Math.min(LB_MAX, next)) / LB.scale;
+  lbSet(LB.scale * k, ox - (ox - LB.x) * k, oy - (oy - LB.y) * k, smooth);
+}
+
+function lbZoomBy(factor) {
+  if (!LB.stage) return;
+  const s = LB.stage.getBoundingClientRect();
+  lbZoomAt(LB.scale * factor, s.left + s.width / 2, s.top + s.height / 2, true);
+}
+
+function lbToggleZoom(cx, cy) {
+  if (LB.scale > 1.05) lbSet(1, 0, 0, true);
+  else lbZoomAt(2.8, cx, cy, true);
+}
+
+function lbWheel(e) {
+  e.preventDefault();
+  lbZoomAt(LB.scale * (e.deltaY < 0 ? 1.18 : 1 / 1.18), e.clientX, e.clientY);
+}
+
+function lbDown(e) {
+  if (!LB.stage) return;
+  LB.stage.setPointerCapture(e.pointerId);
+  LB.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (LB.pts.size === 2) {
+    const [a, b] = [...LB.pts.values()];
+    LB.pinch = { dist: Math.hypot(a.x - b.x, a.y - b.y), scale: LB.scale };
+  } else {
+    LB.drag = { x: e.clientX, y: e.clientY, ox: LB.x, oy: LB.y, moved: 0 };
+    LB.stage.classList.add('panning');
+  }
+}
+
+function lbMove(e) {
+  if (!LB.pts.has(e.pointerId)) return;
+  LB.pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+  if (LB.pts.size >= 2 && LB.pinch) {
+    const [a, b] = [...LB.pts.values()];
+    const dist = Math.hypot(a.x - b.x, a.y - b.y);
+    lbZoomAt(LB.pinch.scale * (dist / LB.pinch.dist), (a.x + b.x) / 2, (a.y + b.y) / 2);
+    return;
+  }
+
+  if (!LB.drag) return;
+  const dx = e.clientX - LB.drag.x;
+  const dy = e.clientY - LB.drag.y;
+  LB.drag.moved = Math.max(LB.drag.moved, Math.hypot(dx, dy));
+  if (LB.scale > 1) {
+    LB.x = LB.drag.ox + dx;
+    LB.y = LB.drag.oy + dy;
+    lbClampPan();
+    lbApply();
+  } else if (dy > 0) {
+    // 1x үед доош чирвэл хаана
+    LB.y = dy * .5;
+    if (LB.el) LB.el.style.opacity = String(Math.max(.25, 1 - dy / 420));
+    lbApply();
+  }
+}
+
+function lbUp(e) {
+  LB.pts.delete(e.pointerId);
+  if (LB.pts.size < 2) LB.pinch = null;
+  if (LB.stage) LB.stage.classList.remove('panning');
+  const drag = LB.drag;
+  LB.drag = null;
+  if (!LB.el) return;
+
+  if (LB.scale <= 1) {
+    if (LB.y > 110) { closeLightbox(); return; }
+    LB.el.style.opacity = '';
+    LB.y = 0; lbApply(true);
+    // Хөдөлгөөнгүй товшилт = давхар товшилт эсвэл ойртуулах
+    if (drag && drag.moved < 6) {
+      const now = Date.now();
+      if (now - LB.lastTap < 300) { LB.lastTap = 0; lbToggleZoom(e.clientX, e.clientY); }
+      else LB.lastTap = now;
+    }
+  } else if (drag && drag.moved < 6) {
+    const now = Date.now();
+    if (now - LB.lastTap < 300) { LB.lastTap = 0; lbToggleZoom(e.clientX, e.clientY); }
+    else LB.lastTap = now;
+  }
+}
+
+/* ── Асуултыг дэлгэц дүүрэн харах горим ──────────────────── */
+function openReader() {
+  if (!activeQ) return;
+  closeLightbox();
+  const el = document.createElement('div');
+  el.className = 'lightbox reader';
+  el.innerHTML = `
+    <div class="lightbox-bar">
+      <div class="lightbox-title">${esc(activeQ.title || 'Асуулт')}</div>
+      <div class="lightbox-actions">
+        <button class="lb-btn" onclick="cycleQScale()" title="Үсгийн хэмжээ"
+                style="width:auto;padding:0 11px;font-size:.72rem;font-weight:700">Aa</button>
+        <button class="lb-btn" onclick="closeLightbox()" title="Хаах">${ICON.close}</button>
+      </div>
+    </div>
+    <div class="lightbox-stage"><div class="reader-body" id="reader-body">${buildReaderBody()}</div></div>`;
+  document.body.appendChild(el);
+  document.body.style.overflow = 'hidden';
+}
+
+function buildReaderBody() {
+  if (!activeQ) return '';
+  const { q, st } = activeQ;
+  return `
+    ${buildQFigure(q.imageUrl, q.questionText)}
+    <div class="q-text">${esc(q.questionText)}</div>
+    <div class="q-options" id="reader-options">${buildQOptions(q, st)}</div>
+    ${st.explanation ? `<div class="q-explanation"><b>Тайлбар:</b> ${esc(st.explanation)}</div>` : ''}`;
+}
+
+/** Үндсэн дэлгэц дээр хариулсны дараа нээлттэй байгаа томруулсан харагдацыг шинэчилнэ. */
+function syncReader() {
+  const body = document.getElementById('reader-body');
+  if (body) body.innerHTML = buildReaderBody();
+}
+
+// ── Гар товчлуур ────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const tag = (e.target.tagName || '').toLowerCase();
+  if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+
+  if (e.key === 'Escape') { closeLightbox(); return; }
+
+  if (LB.el) {
+    if (e.key === '+' || e.key === '=') { e.preventDefault(); lbZoomBy(1.5); }
+    else if (e.key === '-') { e.preventDefault(); lbZoomBy(1 / 1.5); }
+    else if (e.key === '0') { e.preventDefault(); lbSet(1, 0, 0, true); }
+    return;
+  }
+
+  if (!activeQ) return;
+  const keys = activeQ.q.options.map(o => o.key);
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= keys.length) { e.preventDefault(); pickOption(keys[n - 1]); return; }
+  const byLetter = keys.find(k => k.toLowerCase() === e.key.toLowerCase());
+  if (byLetter) { e.preventDefault(); pickOption(byLetter); return; }
+  if (e.key === 'ArrowRight') { e.preventDefault(); activeQ.next && activeQ.next(); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); activeQ.prev && activeQ.prev(); }
+  else if (e.key.toLowerCase() === 'f') { e.preventDefault(); openReader(); }
+});
+
+/* Бүлгийн өнгө: нэг ханалтын түвшинд байгаа зургаан өнгө — солонго биш. */
+const CAT_COLORS = [
+  ['#2f52dd','#1f3ba8'], ['#12798a','#0c5865'], ['#3f7d42','#2c5a2e'],
+  ['#b07d16','#8a6110'], ['#b1553a','#8a4029'], ['#71519c','#543a76'],
+];
+
 // ── Widget builders ─────────────────────────────────────────
 function buildProgressRingWidget(pct) {
   const r = 54, c = 2 * Math.PI * r;
   const offset = c - (pct / 100) * c;
-  const color = pct >= 75 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#6366f1';
+  const color = pct >= 75 ? 'var(--success)' : pct >= 40 ? 'var(--gold)' : 'var(--primary)';
   return `
     <div class="widget-card" style="animation-delay:.08s">
       <div style="display:flex;align-items:center;gap:20px">
         <div class="progress-ring" style="width:120px;height:120px;flex-shrink:0">
           <svg width="120" height="120" viewBox="0 0 120 120">
-            <circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--sunken)" stroke-width="10"/>
             <circle cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="10"
               stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
-              style="filter:drop-shadow(0 2px 8px ${color}40);transition:stroke-dashoffset 1.2s var(--ease-out-expo)"/>
+              style="transition:stroke-dashoffset 1.1s var(--ease-out-expo)"/>
           </svg>
           <div class="progress-text">
-            <span style="font-size:1.6rem;font-weight:900;color:${color}">${pct}%</span>
+            <span class="num" style="font-size:1.55rem;font-weight:800;color:${color}">${pct}%</span>
             <span style="font-size:.6rem;color:var(--text3);font-weight:600">дэвшилт</span>
           </div>
         </div>
@@ -147,8 +524,8 @@ function buildDailyGoalWidget(done, total) {
     <div class="widget-card widget-daily-goal" style="animation-delay:.05s">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:10px">
-          <div class="widget-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.12))">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          <div class="widget-icon" style="background:var(--primary-light);color:var(--primary)">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
           <div>
             <div style="font-weight:800;font-size:.88rem">Өнөөдрийн зорилт</div>
@@ -184,8 +561,8 @@ function buildWeeklyHeatmap() {
   return `
     <div class="widget-card" style="animation-delay:.12s">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <div class="widget-icon" style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(5,150,105,.12))">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <div class="widget-icon" style="background:var(--success-light);color:var(--success)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         </div>
         <div style="font-weight:800;font-size:.88rem">Долоо хоногийн идэвхи</div>
       </div>
@@ -250,8 +627,8 @@ function buildTopCategoriesWidget(cats, gradients) {
   return `
     <div class="widget-card" style="animation-delay:.18s">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <div class="widget-icon" style="background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(249,115,22,.12))">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 1012 0V2Z"/></svg>
+        <div class="widget-icon" style="background:var(--gold-light);color:var(--gold)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 1012 0V2Z"/></svg>
         </div>
         <div style="font-weight:800;font-size:.88rem">Шилдэг бүлгүүд</div>
       </div>
@@ -281,8 +658,8 @@ function buildAchievementWidget(stats) {
   return `
     <div class="widget-card" style="animation-delay:.1s">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
-        <div class="widget-icon" style="background:linear-gradient(135deg,rgba(236,72,153,.12),rgba(139,92,246,.12))">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <div class="widget-icon" style="background:var(--gold-light);color:var(--gold)">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </div>
         <div style="font-weight:800;font-size:.88rem">Амжилтууд</div>
       </div>
@@ -346,7 +723,7 @@ function showLogin() {
             <input class="code-digit" type="tel" maxlength="1" data-idx="2" oninput="codeDigitInput(this,2)" onkeydown="codeDigitKey(event,2)">
             <input class="code-digit" type="tel" maxlength="1" data-idx="3" oninput="codeDigitInput(this,3)" onkeydown="codeDigitKey(event,3)">
           </div>
-          <p id="code-error" style="color:#ef4444;font-size:.8rem;text-align:center;margin:0;display:none"></p>
+          <p id="code-error" style="color:var(--danger);font-size:.8rem;text-align:center;margin:0;display:none"></p>
           <button onclick="submitCodeLogin()" id="code-submit-btn" class="code-submit-btn">Нэвтрэх</button>
         </div>
       </div>
@@ -474,9 +851,13 @@ function renderHeader() {
 
 function nav(page, data) {
   currentPage = page;
+  cancelAutoNext();
+  closeLightbox();
+  activeQ = null;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   const app = $('#app');
   app.innerHTML = showDotLoader();
+  window.scrollTo({ top: 0, behavior: 'instant' });
   switch (page) {
     case 'home': renderHome(); break;
     case 'exam': renderExamMenu(); break;
@@ -499,12 +880,7 @@ function nav(page, data) {
 async function renderHome() {
   try {
     const cats = await api('/categories');
-    const gradients = [
-      ['#3b82f6','#2563eb'],['#8b5cf6','#7c3aed'],['#ec4899','#db2777'],
-      ['#f97316','#ea580c'],['#14b8a6','#0d9488'],['#84cc16','#65a30d'],
-      ['#06b6d4','#0891b2'],['#ef4444','#dc2626'],['#6366f1','#4f46e5'],
-      ['#eab308','#ca8a04']
-    ];
+    const gradients = CAT_COLORS;
     const totalQ = cats.reduce((s, c) => s + (c.questionCount || 0), 0);
     const totalDone = cats.reduce((s, c) => s + (c.completed || 0), 0);
     const overallPct = totalQ ? Math.round((totalDone / totalQ) * 100) : 0;
@@ -517,7 +893,7 @@ async function renderHome() {
         <div class="welcome-stats">
           <div class="welcome-stat">
             <div class="welcome-stat-value stat-value" data-count="${overallPct}">${overallPct}%</div>
-            <div class="welcome-stat-label">Нийт дэвшилт</div>
+            <div class="welcome-stat-label">Дэвшилт</div>
           </div>
           <div class="welcome-stat">
             <div class="welcome-stat-value stat-value" data-count="${totalDone}">${totalDone}</div>
@@ -536,15 +912,15 @@ async function renderHome() {
 
       <div class="quick-actions" style="grid-template-columns:1fr 1fr 1fr">
         <div class="quick-action" onclick="nav('exam')" style="animation-delay:.05s">
-          <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.1))">🎯</div>
+          <div class="quick-action-icon" style="background:var(--primary-light);color:var(--primary)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1"/></svg></div>
           <div class="quick-action-label">Шалгалт</div>
         </div>
         <div class="quick-action" onclick="nav('stats')" style="animation-delay:.1s">
-          <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(5,150,105,.1))">📊</div>
+          <div class="quick-action-icon" style="background:var(--success-light);color:var(--success)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
           <div class="quick-action-label">Статистик</div>
         </div>
         <div class="quick-action" onclick="nav('bookmarks')" style="animation-delay:.15s">
-          <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(249,115,22,.1))">⭐</div>
+          <div class="quick-action-icon" style="background:var(--gold-light);color:var(--gold)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.6 15 9 22 9.9 17 14.7 18.2 21.5 12 18.3 5.8 21.5 7 14.7 2 9.9 9 9 12 2.6"/></svg></div>
           <div class="quick-action-label">Хадгалсан</div>
         </div>
       </div>
@@ -556,7 +932,7 @@ async function renderHome() {
       ${buildTopCategoriesWidget(cats, gradients)}
 
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <h2 class="section-title" style="margin-bottom:0">📚 Бүх бүлгүүд</h2>
+        <h2 class="section-title" style="margin-bottom:0">Бүх бүлгүүд</h2>
         <span style="font-size:.75rem;color:var(--text3);font-weight:600">${cats.length} бүлэг</span>
       </div>
 
@@ -640,89 +1016,152 @@ function renderPractice(data) {
   renderPracticeQuestion();
 }
 
-function renderPracticeQuestion() {
+// Зөв хариулсан бол шууд урагшилна; буруу бол тайлбарыг уншихад хугацаа өгнө.
+const AUTO_NEXT_CORRECT = 620;
+const AUTO_NEXT_WRONG = 2600;
+
+function renderPracticeQuestion(dir) {
+  cancelAutoNext();
   const { questions, index } = practiceData;
   if (!questions.length) { $('#app').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Асуулт олдсонгүй</div></div>'; return; }
   const q = questions[index];
   const backLabel = q.category_name || 'Буцах';
   const pct = Math.round(((index + 1) / questions.length) * 100);
-  let html = `
+
+  activeQ = {
+    q,
+    mode: 'practice',
+    title: `${esc(backLabel)} · ${index + 1}/${questions.length}`,
+    st: { selected: q._selected || null, correctKey: q._correctKey || null, explanation: q._explanation || '', revealed: !!q._answered },
+    next: () => practiceNav(1),
+    prev: () => practiceNav(-1),
+  };
+
+  $('#app').innerHTML = `
     <div class="back-btn" onclick="nav('home')">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
       ${esc(backLabel)}
     </div>
     <div class="progress-header">
       <div class="progress-header-bar"><div class="progress-header-fill" style="width:${pct}%"></div></div>
       <div class="progress-header-text">${index + 1}/${questions.length}</div>
     </div>
-    <div class="card">
+    <div class="card q-stage ${dir < 0 ? 'back' : ''}">
       <div class="q-header">
         <span class="q-counter">Асуулт ${index + 1}</span>
-        <button class="q-bookmark" onclick="toggleBookmark('${q.question_id}')" title="${q.isBookmarked ? 'Хасах' : 'Хадгалах'}">${q.isBookmarked ? '★' : '☆'}</button>
+        <div style="display:flex;align-items:center;gap:5px">
+          ${buildQTools()}
+          <button class="q-bookmark ${q.isBookmarked ? 'on' : ''}" onclick="toggleBookmark('${q.question_id}')"
+                  title="${q.isBookmarked ? 'Хадгалсанаас хасах' : 'Хадгалах'}">${q.isBookmarked ? '★' : '☆'}</button>
+        </div>
       </div>
-      ${q.imageUrl ? `<img class="q-image" src="${q.imageUrl}" alt="Зураг" loading="lazy">` : ''}
+      ${buildQFigure(q.imageUrl, q.questionText)}
       <div class="q-text">${esc(q.questionText)}</div>
-      <div class="q-options" id="q-options">
-        ${q.options.map((o, oi) => `
-          <button class="q-option" data-key="${o.key}" onclick="answerPractice('${q.question_id}','${o.key}')" style="animation-delay:${oi * .05}s">
-            <span class="key">${o.key}</span>
-            <span>${esc(o.text)}</span>
-          </button>`).join('')}
-      </div>
-      <div id="q-feedback"></div>
+      <div class="q-options" id="q-options">${buildQOptions(q, activeQ.st)}</div>
+      <div id="q-feedback">${activeQ.st.explanation ? `<div class="q-explanation"><b>Тайлбар:</b> ${esc(activeQ.st.explanation)}</div>` : ''}</div>
       <div class="q-nav">
         <button class="btn btn-outline" ${index === 0 ? 'disabled' : ''} onclick="practiceNav(-1)">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           Өмнөх
         </button>
         <button class="btn btn-primary" ${index === questions.length - 1 ? 'disabled' : ''} onclick="practiceNav(1)">
           Дараах
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       </div>
     </div>`;
-  $('#app').innerHTML = html;
+  applyQScale();
 }
 
 async function answerPractice(qid, key) {
-  const btns = document.querySelectorAll('#q-options .q-option');
-  btns.forEach(b => b.disabled = true);
+  const q = practiceData.questions[practiceData.index];
+  if (!q || q._answered) return;
+  cancelAutoNext();
+
+  // Сүлжээг хүлээхгүйгээр сонголтыг шууд тэмдэглэнэ.
+  q._selected = key;
+  if (activeQ) activeQ.st.selected = key;
+  markOptions({ selected: key });
+  syncReader();
+
   try {
     const res = await api('/practice/answer', {
       method: 'POST',
       body: JSON.stringify({ question_id: qid, selectedKey: key }),
     });
-    btns.forEach(b => {
-      const k = b.dataset.key;
-      if (k === res.correctKey) b.classList.add('correct');
-      if (k === key && !res.isCorrect) b.classList.add('wrong');
-    });
-    if (res.explanation) {
-      $('#q-feedback').innerHTML = `<div class="q-explanation">💡 ${esc(res.explanation)}</div>`;
-    }
+    q._answered = true;
+    q._correctKey = res.correctKey;
+    q._explanation = res.explanation || '';
+    // Хариу ирэх хооронд өөр асуулт руу шилжсэн бол DOM-д хүрэхгүй.
+    if (!onQuestion(qid)) return;
+    const st = { selected: key, correctKey: res.correctKey, explanation: q._explanation, revealed: true };
+    activeQ.st = st;
+    markOptions(st);
+    const fb = $('#q-feedback');
+    if (fb) fb.innerHTML = res.explanation ? `<div class="q-explanation"><b>Тайлбар:</b> ${esc(res.explanation)}</div>` : '';
+    syncReader();
     trackDailyQuestion();
-    const q = practiceData.questions[practiceData.index];
-    if (q) q._answered = true;
+
+    const last = practiceData.index >= practiceData.questions.length - 1;
+    if (!last) {
+      scheduleAutoNext(res.isCorrect ? AUTO_NEXT_CORRECT : AUTO_NEXT_WRONG,
+                       () => { if (onQuestion(qid)) practiceNav(1); });
+    }
   } catch (e) {
+    q._selected = null;
+    if (onQuestion(qid)) {
+      activeQ.st.selected = null;
+      markOptions({});
+      syncReader();
+    }
     toast(e.message);
-    btns.forEach(b => b.disabled = false);
   }
 }
 
+/** Асуулт `qid` одоо ч дэлгэц дээр харагдаж байна уу. */
+function onQuestion(qid) {
+  return !!activeQ && activeQ.q.question_id === qid;
+}
+
+/** Хариултын товчнуудын төлөвийг бүхэлд нь дахин зурахгүйгээр шинэчилнэ. */
+function markOptions(st) {
+  document.querySelectorAll('.q-options .q-option').forEach(b => {
+    const k = b.dataset.key;
+    b.classList.remove('selected', 'correct', 'wrong', 'dim');
+    b.disabled = !!st.revealed;
+    const bar = b.querySelector('.q-autobar');
+    if (bar) bar.remove();
+    if (st.revealed) {
+      if (k === st.correctKey) b.classList.add('correct');
+      else if (k === st.selected) b.classList.add('wrong');
+      else b.classList.add('dim');
+    } else if (k === st.selected) {
+      b.classList.add('selected');
+    }
+  });
+}
+
 function practiceNav(dir) {
-  practiceData.index += dir;
-  if (practiceData.index < 0) practiceData.index = 0;
-  if (practiceData.index >= practiceData.questions.length) practiceData.index = practiceData.questions.length - 1;
-  renderPracticeQuestion();
+  cancelAutoNext();
+  const next = practiceData.index + dir;
+  if (next < 0 || next >= practiceData.questions.length) return;
+  practiceData.index = next;
+  renderPracticeQuestion(dir);
+  if (document.querySelector('.lightbox.reader')) syncReader();
 }
 
 async function toggleBookmark(qid) {
+  const btn = document.querySelector('.q-bookmark');
   try {
     const res = await api(`/questions/${qid}/bookmark`, { method: 'POST' });
     const q = practiceData.questions[practiceData.index];
     if (q) q.isBookmarked = res.isBookmarked;
-    renderPracticeQuestion();
-    toast(res.isBookmarked ? '⭐ Хадгалагдлаа' : 'Хасагдлаа');
+    if (btn) {
+      btn.textContent = res.isBookmarked ? '★' : '☆';
+      btn.classList.toggle('on', res.isBookmarked);
+      btn.title = res.isBookmarked ? 'Хадгалсанаас хасах' : 'Хадгалах';
+    }
+    toast(res.isBookmarked ? '★ Хадгаллаа' : 'Хадгалсанаас хаслаа');
   } catch (e) { toast(e.message); }
 }
 
@@ -733,7 +1172,7 @@ async function renderExamMenu() {
       api('/me/limits'),
       api('/exam/active'),
     ]);
-    let html = `<h2 class="section-title">🎯 Шалгалт</h2>`;
+    let html = `<h2 class="section-title">Шалгалт</h2>`;
 
     if (active.active) {
       html += `
@@ -771,8 +1210,7 @@ async function renderExamMenu() {
         <div class="stat-card" data-color="blue" style="animation-delay:.1s"><div class="stat-value">${qLeft}</div><div class="stat-label">Өнөөдрийн асуулт</div></div>
       </div>
 
-      <div class="card card-gradient" style="position:relative;overflow:hidden">
-        <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:var(--gradient-primary);opacity:.06;pointer-events:none"></div>
+      <div class="card card-gradient">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
           <div style="width:44px;height:44px;border-radius:14px;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
@@ -793,7 +1231,7 @@ async function renderExamMenu() {
 
     const attempts = await api('/attempts?limit=5');
     if (attempts.length) {
-      html += '<h2 class="section-title" style="margin-top:20px">📋 Сүүлийн шалгалтууд</h2>';
+      html += '<h2 class="section-title" style="margin-top:20px">Сүүлийн шалгалтууд</h2>';
       attempts.forEach((a, i) => {
         html += `
           <div class="card" style="cursor:pointer;padding:14px 16px;animation-delay:${i * .05}s" onclick="nav('attempt-detail','${a.attempt_id}')">
@@ -815,11 +1253,11 @@ async function renderExamMenu() {
       <div class="divider-text" style="margin-top:20px">Бусад</div>
       <div class="quick-actions">
         <div class="quick-action" onclick="nav('bookmarks')" style="animation-delay:.05s">
-          <div class="quick-action-icon" style="background:var(--warning-light)">⭐</div>
+          <div class="quick-action-icon" style="background:var(--gold-light);color:var(--gold)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.6 15 9 22 9.9 17 14.7 18.2 21.5 12 18.3 5.8 21.5 7 14.7 2 9.9 9 9 12 2.6"/></svg></div>
           <div class="quick-action-label">Хадгалсан</div>
         </div>
         <div class="quick-action" onclick="nav('wrong')" style="animation-delay:.1s">
-          <div class="quick-action-icon" style="background:var(--danger-light)">❌</div>
+          <div class="quick-action-icon" style="background:var(--danger-light);color:var(--danger)"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
           <div class="quick-action-label">Алдаатай</div>
         </div>
       </div>`;
@@ -852,6 +1290,31 @@ async function startExam(categoryId) {
 
 function renderExamSession() {
   if (!examState) { nav('exam'); return; }
+  const { questions, answers, remaining } = examState;
+  const answered = Object.keys(answers).length;
+
+  // Хүрээг нэг удаа зурж, дараа нь зөвхөн асуултын хэсгийг сольдог —
+  // ингэснээр хариулт дарахад шилжилт шууд мэдрэгдэнэ.
+  $('#app').innerHTML = `
+    <div class="exam-bar">
+      <button class="btn btn-outline btn-sm" onclick="confirmAbandon()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Болих
+      </button>
+      <div class="exam-answered" id="exam-answered">${answered}/${questions.length}</div>
+      <div class="exam-timer ${remaining > 300 ? 'ok' : ''}" id="exam-timer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        ${formatTime(remaining)}
+      </div>
+    </div>
+    <div class="progress-header" style="margin-bottom:10px">
+      <div class="progress-header-bar"><div class="progress-header-fill" id="exam-progress" style="width:0%"></div></div>
+    </div>
+    <div class="exam-progress-dots" id="exam-dots">
+      ${questions.map((qq, i) => `<div class="exam-dot" data-i="${i}" onclick="examGo(${i})">${i + 1}</div>`).join('')}
+    </div>
+    <div id="exam-card"></div>`;
+
   startExamTimer();
   renderExamQuestion();
 }
@@ -862,8 +1325,10 @@ function startExamTimer() {
     examState.remaining--;
     const timerEl = $('#exam-timer');
     if (timerEl) {
-      timerEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${formatTime(examState.remaining)}`;
-      timerEl.className = 'exam-timer ' + (examState.remaining > 300 ? 'ok' : '');
+      timerEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${formatTime(examState.remaining)}`;
+      timerEl.className = 'exam-timer'
+        + (examState.remaining > 300 ? ' ok' : '')
+        + (examState.remaining <= 60 ? ' low' : '');
     }
     if (examState.remaining <= 0) {
       clearInterval(examTimer);
@@ -872,75 +1337,96 @@ function startExamTimer() {
   }, 1000);
 }
 
-function renderExamQuestion() {
-  const { questions, answers, index, remaining } = examState;
+// Шалгалтын горимд зөв/буруугаа шууд хэлэхгүй тул сонгомогц бараг шууд урагшилна.
+const AUTO_NEXT_EXAM = 210;
+
+function renderExamQuestion(dir) {
+  cancelAutoNext();
+  const card = $('#exam-card');
+  if (!card) { renderExamSession(); return; }
+
+  const { questions, answers, index } = examState;
   const q = questions[index];
-  const timerClass = remaining > 300 ? 'ok' : '';
-  const answeredCount = Object.keys(answers).length;
-  const pct = Math.round(((index + 1) / questions.length) * 100);
-  let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-      <button class="btn btn-outline btn-sm" onclick="confirmAbandon()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-        Болих
-      </button>
-      <div style="font-size:.75rem;color:var(--text3);font-weight:600">${answeredCount}/${questions.length} хариулсан</div>
-      <div class="exam-timer ${timerClass}" id="exam-timer">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
-        ${formatTime(remaining)}
+  const last = index === questions.length - 1;
+  const st = { selected: answers[q.question_id] || null, revealed: false };
+
+  activeQ = {
+    q,
+    mode: 'exam',
+    title: `Шалгалт · Асуулт ${index + 1}/${questions.length}`,
+    st,
+    next: () => examGo(index + 1),
+    prev: () => examGo(index - 1),
+  };
+
+  card.innerHTML = `
+    <div class="card q-stage ${dir < 0 ? 'back' : ''}">
+      <div class="q-header">
+        <span class="q-counter">Асуулт ${index + 1} / ${questions.length}</span>
+        ${buildQTools()}
       </div>
-    </div>
-    <div class="progress-header" style="margin-bottom:10px">
-      <div class="progress-header-bar"><div class="progress-header-fill" style="width:${pct}%"></div></div>
-    </div>
-    <div class="exam-progress-dots">
-      ${questions.map((qq, i) => `
-        <div class="exam-dot ${answers[qq.question_id] ? 'answered' : ''} ${i === index ? 'current' : ''}"
-             onclick="examGo(${i})">${i + 1}</div>`).join('')}
-    </div>
-    <div class="card">
-      <div class="q-counter" style="margin-bottom:10px">Асуулт ${index + 1} / ${questions.length}</div>
-      ${q.imageUrl ? `<img class="q-image" src="${q.imageUrl}" alt="" loading="lazy">` : ''}
+      ${buildQFigure(q.imageUrl, q.questionText)}
       <div class="q-text">${esc(q.questionText)}</div>
-      <div class="q-options">
-        ${q.options.map(o => `
-          <button class="q-option ${answers[q.question_id] === o.key ? 'selected' : ''}"
-                  data-key="${o.key}" onclick="examAnswer('${o.key}')">
-            <span class="key">${o.key}</span>
-            <span>${esc(o.text)}</span>
-          </button>`).join('')}
-      </div>
-      <div class="q-nav" style="margin-top:18px">
-        <button class="btn btn-outline" ${index === 0 ? 'disabled' : ''} onclick="examGo(${index - 1})">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      <div class="q-options" id="q-options">${buildQOptions(q, st)}</div>
+      <div class="q-nav">
+        <button class="btn btn-outline btn-icon" ${index === 0 ? 'disabled' : ''} onclick="examGo(${index - 1})" title="Өмнөх" style="flex:0 0 auto">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        ${index === questions.length - 1
-          ? `<button class="btn btn-primary btn-lg" style="flex:2" onclick="confirmSubmitExam()">✓ Дуусгах</button>`
-          : `<button class="btn btn-primary" style="flex:2" onclick="examGo(${index + 1})">Дараах →</button>`}
-        <button class="btn btn-outline" ${index === questions.length - 1 ? 'disabled' : ''} onclick="examGo(${index + 1})">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-        </button>
+        ${last
+          ? `<button class="btn btn-accent" style="flex:1" onclick="confirmSubmitExam()">Шалгалт дуусгах</button>`
+          : `<button class="btn btn-primary" style="flex:1" onclick="examGo(${index + 1})">Дараах
+               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+             </button>`}
       </div>
     </div>`;
-  $('#app').innerHTML = html;
+
+  updateExamChrome();
+  applyQScale();
 }
 
-async function examAnswer(key) {
+/** Цэгүүд, тоолуур, явцын мөрийг дахин зурахгүйгээр шинэчилнэ. */
+function updateExamChrome() {
+  const { questions, answers, index } = examState;
+  document.querySelectorAll('#exam-dots .exam-dot').forEach((d, i) => {
+    d.classList.toggle('answered', !!answers[questions[i].question_id]);
+    d.classList.toggle('current', i === index);
+  });
+  const counter = $('#exam-answered');
+  if (counter) counter.textContent = `${Object.keys(answers).length}/${questions.length}`;
+  const bar = $('#exam-progress');
+  if (bar) bar.style.width = Math.round(((index + 1) / questions.length) * 100) + '%';
+}
+
+function examAnswer(key) {
   const q = examState.questions[examState.index];
+  const last = examState.index === examState.questions.length - 1;
+  cancelAutoNext();
+
   examState.answers[q.question_id] = key;
-  try {
-    await api('/exam/answer', {
-      method: 'POST',
-      body: JSON.stringify({ session_id: examState.session_id, question_id: q.question_id, selectedKey: key }),
-    });
-  } catch {}
-  renderExamQuestion();
+  if (activeQ) activeQ.st.selected = key;
+  markOptions({ selected: key });
+  updateExamChrome();
+  syncReader();
+
+  // Сервер рүү бичихийг хүлээхгүй — шилжилт хойшлохгүй байх нь чухал.
+  api('/exam/answer', {
+    method: 'POST',
+    body: JSON.stringify({ session_id: examState.session_id, question_id: q.question_id, selectedKey: key }),
+  }).catch(() => {});
+
+  if (!last) {
+    scheduleAutoNext(AUTO_NEXT_EXAM,
+                     () => { if (onQuestion(q.question_id)) examGo(examState.index + 1); });
+  }
 }
 
 function examGo(i) {
-  if (i < 0 || i >= examState.questions.length) return;
+  cancelAutoNext();
+  if (!examState || i < 0 || i >= examState.questions.length) return;
+  const dir = i < examState.index ? -1 : 1;
   examState.index = i;
-  renderExamQuestion();
+  renderExamQuestion(dir);
+  if (document.querySelector('.lightbox.reader')) syncReader();
 }
 
 function confirmAbandon() {
@@ -984,7 +1470,7 @@ function renderExamResult(result) {
     <div class="card result-card ${cls}">
       <div class="result-bg"></div>
       <div class="result-emoji">${result.passed ? '🎉' : '💪'}</div>
-      <div class="result-circle ${cls}">
+      <div class="result-circle ${cls}" style="--pct:${result.percent}">
         <div class="score">${result.percent}%</div>
         <div class="label">${result.score}/${result.total}</div>
       </div>
@@ -1002,17 +1488,17 @@ function renderExamResult(result) {
         <div class="stat-card" data-color="green" style="flex:1"><div class="stat-value">${result.score}</div><div class="stat-label">Зөв</div></div>
         <div class="stat-card" data-color="red" style="flex:1"><div class="stat-value">${wrongCount}</div><div class="stat-label">Буруу</div></div>
       </div>
-      <h2 class="section-title">📝 Хариултууд</h2>`;
+      <h2 class="section-title">Хариултууд</h2>`;
     result.detail.forEach((d, i) => {
       html += `
         <div class="review-item ${d.isCorrect ? 'correct-review' : 'wrong-review'}" style="animation-delay:${i * .04}s">
           <div class="review-q">${i + 1}. ${esc(d.questionText)}</div>
-          ${d.imageUrl ? `<img class="review-img" src="${d.imageUrl}" loading="lazy">` : ''}
+          ${d.imageUrl ? `<img class="review-img" src="${d.imageUrl}" alt="${esc(d.questionText)}" loading="lazy" onclick="openLightbox(this.src, this.alt)" title="Томруулах">` : ''}
           ${d.options.map(o => {
             let cls = '';
             if (o.key === d.correctKey) cls = 'correct';
             else if (o.key === d.selectedKey && !d.isCorrect) cls = 'wrong';
-            return `<div class="q-option ${cls}" style="margin-bottom:4px;cursor:default;pointer-events:none"><span class="key">${o.key}</span><span>${esc(o.text)}</span></div>`;
+            return `<div class="q-option ${cls}" style="margin-bottom:4px;cursor:default;pointer-events:none"><span class="key">${o.key}</span><span>${esc(optionText(o))}</span></div>`;
           }).join('')}
           ${d.explanation ? `<div class="q-explanation">💡 ${esc(d.explanation)}</div>` : ''}
         </div>`;
@@ -1077,7 +1563,7 @@ async function renderStats() {
     const s = await api('/stats');
     const passRate = s.examsTaken ? Math.round((s.examsPassed / s.examsTaken) * 100) : 0;
     let html = `
-      <h2 class="section-title">📊 Миний статистик</h2>
+      <h2 class="section-title">Миний статистик</h2>
       <div class="stat-grid">
         <div class="stat-card" data-color="blue" style="animation-delay:.05s"><div class="stat-value">${s.totalAnswered}</div><div class="stat-label">Нийт хариулсан</div></div>
         <div class="stat-card" data-color="green" style="animation-delay:.1s"><div class="stat-value">${s.correctPercent}%</div><div class="stat-label">Зөв хариулт</div></div>
@@ -1088,7 +1574,7 @@ async function renderStats() {
       <div style="display:flex;gap:10px;margin-bottom:18px">
         <div class="card" style="flex:1;text-align:center;margin-bottom:0;padding:18px 12px">
           <div style="font-size:2rem;margin-bottom:4px">${s.currentStreak > 0 ? '🔥' : '❄️'}</div>
-          <div style="font-size:1.4rem;font-weight:900;color:${s.currentStreak > 0 ? '#f97316' : 'var(--text3)'}">${s.currentStreak}</div>
+          <div style="font-size:1.4rem;font-weight:900;color:${s.currentStreak > 0 ? 'var(--gold)' : 'var(--text3)'}">${s.currentStreak}</div>
           <div style="font-size:.7rem;color:var(--text3);font-weight:600;margin-top:2px">Дараалсан өдөр</div>
         </div>
         <div class="card" style="flex:1;text-align:center;margin-bottom:0;padding:18px 12px">
@@ -1110,7 +1596,7 @@ async function renderStats() {
       ${buildWeeklyHeatmap()}`;
 
     if (s.perCategory && s.perCategory.length) {
-      html += '<h2 class="section-title" style="margin-top:8px">📚 Бүлгээр</h2>';
+      html += '<h2 class="section-title" style="margin-top:8px">Бүлгээр</h2>';
       s.perCategory.forEach((c, i) => {
         const pct = c.questionCount ? Math.round((c.correct / c.questionCount) * 100) : 0;
         const color = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--text3)';
@@ -1126,7 +1612,7 @@ async function renderStats() {
     }
 
     if (s.recentExams && s.recentExams.length) {
-      html += '<h2 class="section-title" style="margin-top:8px">📋 Сүүлийн шалгалтууд</h2>';
+      html += '<h2 class="section-title" style="margin-top:8px">Сүүлийн шалгалтууд</h2>';
       s.recentExams.forEach((a, i) => {
         html += `
           <div class="card" style="padding:12px 16px;cursor:pointer;animation-delay:${i * .04}s" onclick="nav('attempt-detail','${a.attempt_id}')">
@@ -1443,32 +1929,39 @@ function copyText(text) {
 }
 
 // ── Theme toggle ───────────────────────────────────────────
-function toggleTheme() {
-  const html = document.documentElement;
-  const current = html.getAttribute('data-theme');
-  const next = current === 'dark' ? 'light' : 'dark';
-  html.setAttribute('data-theme', next);
-  localStorage.setItem('theme', next);
-  updateThemeIcon();
-  const mc = document.querySelector('meta[name="theme-color"]');
-  if (mc) mc.content = next === 'dark' ? '#0c0e1a' : '#f0f2f8';
+/** Хадгалсан горим байхгүй бол системийн тохиргоог дагана. */
+function effectiveTheme() {
+  const set = document.documentElement.getAttribute('data-theme');
+  if (set) return set;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-function updateThemeIcon() {
+function toggleTheme() {
+  const next = effectiveTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  applyThemeChrome();
+}
+
+function applyThemeChrome() {
+  const theme = effectiveTheme();
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.content = theme === 'dark' ? '#0e0f12' : '#f4f1e9';
   document.querySelectorAll('.theme-toggle, #login-theme-toggle').forEach(btn => {
-    const theme = document.documentElement.getAttribute('data-theme');
     btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+    btn.title = theme === 'dark' ? 'Цайвар горим' : 'Бараан горим';
   });
 }
 
+// renderHeader() зэрэг хуучин дуудлагуудыг ажиллуулж байхаар үлдээв.
+const updateThemeIcon = applyThemeChrome;
+
 function initTheme() {
   const saved = localStorage.getItem('theme');
-  if (saved) {
-    document.documentElement.setAttribute('data-theme', saved);
-    const mc = document.querySelector('meta[name="theme-color"]');
-    if (mc) mc.content = saved === 'dark' ? '#0c0e1a' : '#f0f2f8';
-  }
-  updateThemeIcon();
+  if (saved) document.documentElement.setAttribute('data-theme', saved);
+  applyThemeChrome();
+  window.matchMedia('(prefers-color-scheme: dark)')
+    .addEventListener('change', () => { if (!localStorage.getItem('theme')) applyThemeChrome(); });
 }
 
 // ── Header scroll effect ────────────────────────────────────
@@ -1478,276 +1971,7 @@ window.addEventListener('scroll', () => {
   header.classList.toggle('scrolled', window.scrollY > 10);
 }, { passive: true });
 
-// ── 3D Tilt Effect ──────────────────────────────────────────
-function init3DTilt() {
-  document.querySelectorAll('.card-3d').forEach(card => {
-    card.addEventListener('mousemove', e => {
-      const rect = card.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-      const rotateX = ((y - centerY) / centerY) * -8;
-      const rotateY = ((x - centerX) / centerX) * 8;
-      card.style.transform = `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale(1.02)`;
-    });
-    card.addEventListener('mouseleave', () => {
-      card.style.transform = 'perspective(1000px) rotateX(0) rotateY(0) scale(1)';
-    });
-  });
-}
-
-// ── Spotlight Effect ────────────────────────────────────────
-function initSpotlight() {
-  document.querySelectorAll('.spotlight').forEach(el => {
-    const glow = el.querySelector('.spotlight-glow');
-    if (!glow) return;
-    el.addEventListener('mousemove', e => {
-      const rect = el.getBoundingClientRect();
-      glow.style.left = (e.clientX - rect.left) + 'px';
-      glow.style.top = (e.clientY - rect.top) + 'px';
-    });
-  });
-}
-
-// ── Floating Particles ──────────────────────────────────────
-function initParticles() {
-  const container = document.getElementById('particles');
-  if (!container || container.children.length > 0) return;
-  const colors = ['rgba(99,102,241,.3)', 'rgba(139,92,246,.25)', 'rgba(236,72,153,.2)', 'rgba(16,185,129,.2)', 'rgba(6,182,212,.25)'];
-  for (let i = 0; i < 20; i++) {
-    const p = document.createElement('div');
-    p.className = 'particle';
-    const size = 3 + Math.random() * 5;
-    p.style.cssText = `width:${size}px;height:${size}px;left:${Math.random()*100}%;background:${colors[i%colors.length]};animation-duration:${12+Math.random()*18}s;animation-delay:${Math.random()*15}s`;
-    container.appendChild(p);
-  }
-}
-
-// ── Scroll Reveal ───────────────────────────────────────────
-function initScrollReveal() {
-  const observer = new IntersectionObserver(entries => {
-    entries.forEach(e => {
-      if (e.isIntersecting) {
-        e.target.classList.add('visible');
-        observer.unobserve(e.target);
-      }
-    });
-  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-  document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-}
-
-// ── 3D Flip Cards ───────────────────────────────────────────
-function initFlipCards() {
-  document.querySelectorAll('.flip-card').forEach(card => {
-    card.addEventListener('click', () => card.classList.toggle('flipped'));
-  });
-}
-
-// ── Live Clock Widget ───────────────────────────────────────
-function buildClockWidget() {
-  return `
-    <div class="widget-card clock-widget reveal" style="animation-delay:.2s">
-      <div class="clock-ring">
-        <div class="clock-progress" id="clock-progress"></div>
-        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column">
-          <div class="clock-display" id="live-clock"></div>
-          <div class="clock-date" id="live-date"></div>
-        </div>
-      </div>
-    </div>`;
-}
-
-function startLiveClock() {
-  function tick() {
-    const now = new Date();
-    const el = document.getElementById('live-clock');
-    const dateEl = document.getElementById('live-date');
-    const progEl = document.getElementById('clock-progress');
-    if (!el) return;
-    el.textContent = now.toLocaleTimeString('mn-MN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-    if (dateEl) {
-      dateEl.textContent = now.toLocaleDateString('mn-MN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
-    }
-    if (progEl) {
-      const sec = now.getSeconds();
-      progEl.style.transform = `rotate(${sec * 6}deg)`;
-    }
-  }
-  tick();
-  setInterval(tick, 1000);
-}
-
-// ── 3D Cube Widget ──────────────────────────────────────────
-function buildCubeWidget() {
-  return `
-    <div class="widget-card reveal" style="animation-delay:.22s;text-align:center;padding:24px">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;justify-content:center">
-        <div style="font-weight:800;font-size:.88rem">Сонирхолтой баримтууд</div>
-      </div>
-      <div class="cube-widget">
-        <div class="cube">
-          <div class="cube-face front">🚗</div>
-          <div class="cube-face back">📝</div>
-          <div class="cube-face right">🎯</div>
-          <div class="cube-face left">📚</div>
-          <div class="cube-face top">🏆</div>
-          <div class="cube-face bottom">⭐</div>
-        </div>
-      </div>
-      <p style="font-size:.78rem;color:var(--text2);margin-top:16px;font-weight:500;line-height:1.6">Мэдлэг бол хамгийн найдвартай жолооч</p>
-    </div>`;
-}
-
-// ── Streak Fire Widget ──────────────────────────────────────
-function buildStreakFireWidget(streak) {
-  if (streak <= 0) return '';
-  let particles = '';
-  for (let i = 0; i < 8; i++) {
-    const drift = (Math.random() - 0.5) * 20;
-    particles += `<div class="fire-particle" style="animation-delay:${i*0.12}s;--drift:${drift}px;left:calc(50% + ${(Math.random()-0.5)*30}px)"></div>`;
-  }
-  return `
-    <div class="widget-card reveal glass-panel" style="animation-delay:.25s;text-align:center;padding:24px;position:relative;overflow:visible">
-      <div class="streak-fire" style="font-size:3rem;margin-bottom:8px">
-        🔥
-        ${particles}
-      </div>
-      <div style="font-size:1.8rem;font-weight:900;color:#f97316">${streak}</div>
-      <div style="font-size:.78rem;color:var(--text3);font-weight:600">хоног дараалсан</div>
-    </div>`;
-}
-
-// ── Wave Divider ────────────────────────────────────────────
-function buildWaveDivider() {
-  return `
-    <div class="wave-divider">
-      <svg viewBox="0 0 1200 40" preserveAspectRatio="none" fill="var(--primary)" opacity=".08">
-        <path d="M0,20 C150,40 350,0 600,20 C850,40 1050,0 1200,20 L1200,40 L0,40 Z"/>
-        <path d="M0,25 C200,10 400,35 600,25 C800,15 1000,30 1200,25 L1200,40 L0,40 Z" opacity=".5"/>
-      </svg>
-    </div>`;
-}
-
-// ── Flip Card Feature Widget ────────────────────────────────
-function buildFlipCardsWidget() {
-  const cards = [
-    { front: '📝', title: '800+', desc: 'Асуулт', backTitle: 'Бүх асуулт', backDesc: 'Жинхэнэ шалгалтын бүх асуултууд' },
-    { front: '🎯', title: '36', desc: 'Бүлэг', backTitle: 'Бүх бүлэг', backDesc: 'Замын тэмдэг, дүрмүүд, анхны тусламж...' },
-  ];
-  return `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
-      ${cards.map((c, i) => `
-        <div class="flip-card reveal" style="animation-delay:${.18 + i * .06}s" onclick="this.classList.toggle('flipped')">
-          <div class="flip-card-inner">
-            <div class="flip-card-front" style="gap:8px">
-              <div style="font-size:2.2rem">${c.front}</div>
-              <div style="font-size:1.4rem;font-weight:900;background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">${c.title}</div>
-              <div style="font-size:.72rem;color:var(--text3);font-weight:600">${c.desc}</div>
-            </div>
-            <div class="flip-card-back" style="gap:6px">
-              <div style="font-size:1rem;font-weight:800">${c.backTitle}</div>
-              <div style="font-size:.78rem;opacity:.85;line-height:1.5">${c.backDesc}</div>
-            </div>
-          </div>
-        </div>`).join('')}
-    </div>`;
-}
-
-// ── Enhanced page init (called after render) ────────────────
-function initPageEffects() {
-  setTimeout(() => {
-    init3DTilt();
-    initSpotlight();
-    initScrollReveal();
-    initFlipCards();
-    if (document.getElementById('live-clock')) startLiveClock();
-  }, 100);
-}
-
-// ── Override renderHome to add 3D widgets ───────────────────
-const _origRenderHome = renderHome;
-renderHome = async function() {
-  await _origRenderHome();
-  const app = document.getElementById('app');
-  if (!app) return;
-
-  const welcomeBanner = app.querySelector('.welcome-banner');
-  if (welcomeBanner) {
-    welcomeBanner.classList.add('card-3d', 'spotlight');
-    welcomeBanner.insertAdjacentHTML('afterbegin', '<div class="card-3d-shine"></div><div class="spotlight-glow"></div>');
-  }
-
-  app.querySelectorAll('.widget-card').forEach(w => {
-    w.classList.add('reveal', 'depth-hover');
-  });
-  app.querySelectorAll('.card').forEach(c => {
-    if (!c.classList.contains('widget-card') && !c.classList.contains('welcome-banner')) {
-      c.classList.add('reveal');
-    }
-  });
-  app.querySelectorAll('.quick-action').forEach(qa => {
-    qa.classList.add('depth-hover');
-  });
-  app.querySelectorAll('.stat-card').forEach(sc => sc.classList.add('stat-3d'));
-  app.querySelectorAll('.btn-primary').forEach(b => b.classList.add('btn-liquid'));
-
-  const catList = app.querySelector('#cat-list');
-  if (catList) {
-    catList.insertAdjacentHTML('beforebegin', buildWaveDivider());
-  }
-
-  const heatmap = app.querySelectorAll('.widget-card')[2];
-  if (heatmap) {
-    heatmap.insertAdjacentHTML('afterend', buildClockWidget() + buildCubeWidget());
-  }
-
-  const quote = app.querySelector('.widget-quote');
-  if (quote) {
-    quote.insertAdjacentHTML('afterend', buildFlipCardsWidget());
-  }
-
-  initPageEffects();
-};
-
-// ── Override renderStats to add effects ─────────────────────
-const _origRenderStats = renderStats;
-renderStats = async function() {
-  await _origRenderStats();
-  const app = document.getElementById('app');
-  if (!app) return;
-  app.querySelectorAll('.stat-card').forEach(sc => sc.classList.add('stat-3d', 'depth-hover'));
-  app.querySelectorAll('.widget-card').forEach(w => w.classList.add('reveal', 'depth-hover'));
-  app.querySelectorAll('.card').forEach(c => c.classList.add('reveal'));
-  initPageEffects();
-};
-
-// ── Override renderExamMenu to add effects ──────────────────
-const _origRenderExamMenu = renderExamMenu;
-renderExamMenu = async function() {
-  await _origRenderExamMenu();
-  const app = document.getElementById('app');
-  if (!app) return;
-  app.querySelectorAll('.card').forEach(c => c.classList.add('reveal', 'depth-hover'));
-  app.querySelectorAll('.stat-card').forEach(sc => sc.classList.add('stat-3d'));
-  app.querySelectorAll('.quick-action').forEach(qa => qa.classList.add('depth-hover'));
-  app.querySelectorAll('.btn-primary').forEach(b => b.classList.add('btn-liquid'));
-  initPageEffects();
-};
-
-// ── Override showLogin to add 3D hero ───────────────────────
-const _origShowLogin = showLogin;
-showLogin = function() {
-  _origShowLogin();
-  const hero = document.querySelector('.login-hero');
-  if (hero) hero.classList.add('hero-3d');
-  document.querySelectorAll('.login-feat').forEach(f => f.classList.add('depth-hover'));
-  const title = document.querySelector('.login-screen h1');
-  if (title) title.classList.add('neon-text');
-  initPageEffects();
-};
-
-// ── Init ────────────────────────────────────────────────────
+// ── Init ──────────────────────────────────────
 initTheme();
-initParticles();
+applyQScale();
 initApp();
