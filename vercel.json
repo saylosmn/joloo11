@@ -1,7 +1,0 @@
-{
-  "rewrites": [
-    { "source": "/frontend/(.*)", "destination": "/backend/frontend/$1" },
-    { "source": "/(.*)", "destination": "/api/index.py" }
-  ],
-  "outputDirectory": "."
-}
