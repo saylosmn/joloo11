@@ -1425,51 +1425,54 @@ async def telegram_webhook(request: Request):
     secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
     if TELEGRAM_WEBHOOK_SECRET and secret != TELEGRAM_WEBHOOK_SECRET:
         raise HTTPException(status_code=403, detail="forbidden")
-    update = await request.json()
+    try:
+        update = await request.json()
+    except Exception:
+        return {"ok": True}
 
-    # Approve/reject buttons on a bank-transfer request.
-    cq = update.get("callback_query")
-    if cq:
-        if str(cq.get("from", {}).get("id")) != str(TELEGRAM_ADMIN_ID):
-            await tg_api("answerCallbackQuery", {"callback_query_id": cq["id"], "text": "Эрх байхгүй"})
+    try:
+        # Approve/reject buttons on a bank-transfer request.
+        cq = update.get("callback_query")
+        if cq:
+            if str(cq.get("from", {}).get("id")) != str(TELEGRAM_ADMIN_ID):
+                await tg_api("answerCallbackQuery", {"callback_query_id": cq["id"], "text": "Эрх байхгүй"})
+                return {"ok": True}
+            data = cq.get("data") or ""
+            action, _, payment_id = data.partition(":")
+            if action in ("payok", "payno") and payment_id:
+                reply = await resolve_bank_payment(payment_id, approve=action == "payok")
+            else:
+                reply = "Танихгүй үйлдэл."
+            await tg_api("answerCallbackQuery", {"callback_query_id": cq["id"]})
+            message = cq.get("message") or {}
+            if message.get("message_id"):
+                await tg_api("editMessageText", {
+                    "chat_id": message["chat"]["id"],
+                    "message_id": message["message_id"],
+                    "text": (message.get("text") or "") + "\n\n" + reply,
+                    "parse_mode": "HTML",
+                })
+            else:
+                await tg_send(cq.get("from", {}).get("id"), reply)
             return {"ok": True}
-        data = cq.get("data") or ""
-        action, _, payment_id = data.partition(":")
-        if action in ("payok", "payno") and payment_id:
-            reply = await resolve_bank_payment(payment_id, approve=action == "payok")
-        else:
-            reply = "Танихгүй үйлдэл."
-        await tg_api("answerCallbackQuery", {"callback_query_id": cq["id"]})
-        message = cq.get("message") or {}
-        if message.get("message_id"):
-            # Replace the buttons with the outcome so it cannot be pressed twice.
-            await tg_api("editMessageText", {
-                "chat_id": message["chat"]["id"],
-                "message_id": message["message_id"],
-                "text": (message.get("text") or "") + "\n\n" + reply,
-                "parse_mode": "HTML",
-            })
-        else:
-            await tg_send(cq.get("from", {}).get("id"), reply)
-        return {"ok": True}
 
-    msg = update.get("message") or update.get("edited_message")
-    if not msg:
-        return {"ok": True}
-    chat_id = msg.get("chat", {}).get("id")
-    from_id = str(msg.get("from", {}).get("id"))
-    text = msg.get("text", "")
-    if from_id != str(TELEGRAM_ADMIN_ID):
-        # Printing both sides makes a mistyped TELEGRAM_ADMIN_ID obvious; without
-        # it the bot just goes quiet and there is nothing to compare against.
-        logger.warning(
-            "Telegram message from %s rejected; TELEGRAM_ADMIN_ID is %r",
-            from_id, TELEGRAM_ADMIN_ID,
-        )
-        await tg_send(chat_id, "⛔ Танд энэ ботыг ашиглах эрх байхгүй.")
-        return {"ok": True}
-    reply = await handle_admin_command(chat_id, text)
-    await tg_send(chat_id, reply)
+        msg = update.get("message") or update.get("edited_message")
+        if not msg:
+            return {"ok": True}
+        chat_id = msg.get("chat", {}).get("id")
+        from_id = str(msg.get("from", {}).get("id"))
+        text = msg.get("text", "")
+        if from_id != str(TELEGRAM_ADMIN_ID):
+            logger.warning(
+                "Telegram message from %s rejected; TELEGRAM_ADMIN_ID is %r",
+                from_id, TELEGRAM_ADMIN_ID,
+            )
+            await tg_send(chat_id, "⛔ Танд энэ ботыг ашиглах эрх байхгүй.")
+            return {"ok": True}
+        reply = await handle_admin_command(chat_id, text)
+        await tg_send(chat_id, reply)
+    except Exception as e:
+        logger.exception("Telegram webhook handler error: %s", e)
     return {"ok": True}
 
 
