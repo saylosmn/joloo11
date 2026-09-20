@@ -1,0 +1,59 @@
+# Шалгалтын урсгал: эхлүүлэх -> хариулах -> дуусгах -> дүн харах.
+appId: mn.zhdshalgalt.app
+---
+- launchApp:
+    clearState: false
+
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    commands:
+      - tapOn:
+          id: "onboarding-skip"
+
+- tapOn:
+    id: "action-exam"
+- assertVisible:
+    id: "start-exam-button"
+- tapOn:
+    id: "start-exam-button"
+
+# Цаг ба асуулт гарч ирэх ёстой (эрх дууссан бол PRO цонх гарна).
+- runFlow:
+    when:
+      visible:
+        id: "exam-pro-btn"
+    commands:
+      - assertVisible:
+          id: "exam-pro-btn"
+      - stopApp
+
+- assertVisible:
+    id: "exam-timer"
+- assertVisible:
+    id: "exam-question-text"
+
+# 20 асуултад дараалан хариулах.
+- repeat:
+    times: 20
+    commands:
+      - tapOn:
+          id: "option-А"
+      - runFlow:
+          when:
+            visible:
+              id: "exam-next"
+          commands:
+            - tapOn:
+                id: "exam-next"
+
+- tapOn:
+    id: "exam-submit"
+- tapOn:
+    id: "confirm-submit"
+
+- assertVisible:
+    id: "result-percent"
+- assertVisible:
+    id: "share-result"

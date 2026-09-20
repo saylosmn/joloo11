@@ -1,0 +1,27 @@
+# Богино горим: 5 минутын блиц.
+appId: mn.zhdshalgalt.app
+---
+- launchApp:
+    clearState: false
+
+- tapOn:
+    id: "action-exam"
+- tapOn:
+    id: "quick-blitz"
+
+- assertVisible:
+    id: "quick-timer"
+- assertVisible:
+    id: "quick-question"
+
+- repeat:
+    times: 10
+    commands:
+      - tapOn:
+          id: "option-А"
+      - tapOn:
+          id: "quick-next"
+
+# Дүнгийн дэлгэц.
+- assertVisible:
+    id: "quick-retry"

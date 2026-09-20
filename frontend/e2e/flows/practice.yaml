@@ -1,0 +1,59 @@
+# Дасгалын урсгал: нүүр -> бүлэг -> асуулт хариулах -> тэмдэглэл.
+appId: mn.zhdshalgalt.app
+---
+- launchApp:
+    clearState: false
+
+# Онбординг гарвал алгасах.
+- runFlow:
+    when:
+      visible:
+        id: "onboarding-skip"
+    commands:
+      - tapOn:
+          id: "onboarding-skip"
+
+- assertVisible:
+    id: "home-profile-name"
+
+- tapOn:
+    id: "action-practice"
+- assertVisible:
+    id: "category-search"
+
+# Эхний бүлэг рүү орох (үнэгүй хэрэглэгчид нээлттэй).
+- tapOn:
+    id: "filter-all"
+- tapOn:
+    point: "50%,55%"
+
+- assertVisible:
+    id: "question-text"
+
+# Эхний хариултыг сонгоод тайлбар гарч ирэхийг шалгах.
+- tapOn:
+    id: "option-А"
+- assertVisible:
+    id: "next-question"
+
+# Тэмдэглэл бичих.
+- tapOn:
+    id: "note-open"
+- tapOn:
+    id: "note-tag-confusing"
+- tapOn:
+    id: "note-input"
+- inputText: "Дараа давтах"
+- tapOn:
+    id: "note-save"
+
+# Асуултын жагсаалт (grid) нээгдэж байгаа эсэх.
+- tapOn:
+    id: "open-grid"
+- assertVisible:
+    id: "grid-1"
+- tapOn:
+    id: "grid-1"
+
+- tapOn:
+    id: "practice-back"
