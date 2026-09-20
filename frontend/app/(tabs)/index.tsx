@@ -379,6 +379,14 @@ export default function Home() {
                 onPress: () => router.push("/review/wrong"),
               },
               {
+                testID: "action-flashcard",
+                icon: "albums",
+                title: "Флашкарт",
+                subtitle: "Замын тэмдэг цээжлэх",
+                color: "#8B5CF6",
+                onPress: () => router.push("/flashcard" as never),
+              },
+              {
                 testID: "action-bookmark",
                 icon: "bookmark",
                 title: "Тэмдэглэсэн",

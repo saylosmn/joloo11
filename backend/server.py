@@ -498,6 +498,48 @@ async def wrong_questions(authorization: Optional[str] = Header(None)):
     return [q_public(q, include_answer=True) for q in qs]
 
 
+@api_router.get("/questions/random")
+async def random_questions(
+    count: int = Query(default=10, ge=1, le=200),
+    imagesOnly: bool = Query(default=False),
+    weak: bool = Query(default=False),
+    category_id: Optional[str] = Query(default=None),
+    authorization: Optional[str] = Header(None),
+):
+    user = await get_current_user(authorization)
+    match: dict = {}
+    if imagesOnly:
+        match["imageUrl"] = {"$ne": None}
+    if category_id:
+        match["category_id"] = category_id
+
+    if weak and not category_id:
+        prog = await db.userProgress.aggregate([
+            {"$match": {"user_id": user["user_id"], "isCorrect": False}},
+            {"$lookup": {
+                "from": "questions",
+                "localField": "question_id",
+                "foreignField": "question_id",
+                "as": "q",
+            }},
+            {"$unwind": "$q"},
+            {"$group": {"_id": "$q.category_id", "wrongCount": {"$sum": 1}}},
+            {"$sort": {"wrongCount": -1}},
+            {"$limit": 5},
+        ]).to_list(5)
+        weak_cats = [r["_id"] for r in prog]
+        if weak_cats:
+            match["category_id"] = {"$in": weak_cats}
+
+    pipeline: list = []
+    if match:
+        pipeline.append({"$match": match})
+    pipeline.append({"$sample": {"size": count}})
+    pipeline.append({"$project": {"_id": 0}})
+    qs = await db.questions.aggregate(pipeline).to_list(count)
+    return [q_public(q, include_answer=True) for q in qs]
+
+
 # ---- Exam sessions -------------------------------------------------------
 # The question set, the clock and the answers live on the server, so closing the
 # app mid-exam no longer loses the attempt - which matters because starting an
