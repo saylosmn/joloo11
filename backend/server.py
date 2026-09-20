@@ -1644,10 +1644,28 @@ async def cleanup_stale():
 
 @app.on_event("startup")
 async def on_startup():
-    await db.users.create_index("email", unique=True, sparse=True)
+    # Drop old sparse unique indexes that treat null as a real value — code-login
+    # users have email/google_sub = None, so sparse unique on those fields causes
+    # DuplicateKeyError.  Replace with partialFilterExpression indexes that skip
+    # documents where the field is null.
+    for field in ("email_1", "google_sub_1", "profileNameLower_1"):
+        try:
+            await db.users.drop_index(field)
+        except Exception:
+            pass
+    await db.users.create_index(
+        "email", unique=True,
+        partialFilterExpression={"email": {"$type": "string"}},
+    )
     await db.users.create_index("user_id", unique=True)
-    await db.users.create_index("profileNameLower", unique=True, sparse=True)
-    await db.users.create_index("google_sub", unique=True, sparse=True)
+    await db.users.create_index(
+        "profileNameLower", unique=True,
+        partialFilterExpression={"profileNameLower": {"$type": "string"}},
+    )
+    await db.users.create_index(
+        "google_sub", unique=True,
+        partialFilterExpression={"google_sub": {"$type": "string"}},
+    )
     await db.user_sessions.create_index("session_token", unique=True)
     await db.userProgress.create_index([("user_id", 1), ("question_id", 1)], unique=True)
     await db.dailyUsage.create_index([("user_id", 1), ("date", 1)], unique=True)
