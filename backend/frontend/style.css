@@ -223,6 +223,17 @@ main{flex:1;padding:16px 0 calc(var(--nav-height) + 16px);animation:fadeIn .3s e
   .bottom-nav .inner{max-width:520px}
 }
 
+/* ---------- download button ---------- */
+.download-btn{display:flex;align-items:center;gap:14px;width:100%;padding:14px 18px;border-radius:var(--radius);background:var(--surface);border:2px solid var(--primary);color:var(--text);transition:all .2s;text-decoration:none;box-shadow:var(--shadow)}
+.download-btn:hover{background:var(--primary-light);box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.download-btn:active{transform:scale(.98)}
+.download-btn svg{color:var(--primary);flex-shrink:0}
+.download-btn-text{display:flex;flex-direction:column;text-align:left}
+.download-btn-title{font-weight:700;font-size:.9rem;color:var(--text)}
+.download-btn-size{font-size:.72rem;color:var(--text3);margin-top:2px;font-weight:500}
+.header-download-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:var(--primary-light);color:var(--primary);transition:all .2s;text-decoration:none}
+.header-download-btn:hover{background:var(--primary);color:#fff;box-shadow:0 2px 8px rgba(79,70,229,.3)}
+
 /* ---------- selection ---------- */
 ::selection{background:var(--primary-light);color:var(--primary)}
 

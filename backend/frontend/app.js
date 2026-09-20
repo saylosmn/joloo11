@@ -63,6 +63,7 @@ function showLogin() {
         <div class="login-feat"><div class="login-feat-icon">📊</div>Статистик</div>
         <div class="login-feat"><div class="login-feat-icon">🎯</div>Шалгалт</div>
       </div>
+      <div id="login-download" style="margin-top:24px"></div>
     </div>`;
   if (webClientId && window.google) {
     google.accounts.id.initialize({
@@ -73,6 +74,7 @@ function showLogin() {
       theme: 'outline', size: 'large', text: 'signin_with', locale: 'mn',
     });
   }
+  checkApkAvailable('login-download');
 }
 
 async function handleGoogleResponse(response) {
@@ -110,9 +112,16 @@ function renderHeader() {
   const pic = user?.picture || '';
   const name = user?.profileName || user?.name || '';
   $('#header-right').innerHTML = `
+    <a href="/api/download/app" class="header-download-btn" id="header-dl-btn" style="display:none" title="Апп татах" download>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+    </a>
     ${user?.isPro ? '<span class="badge badge-pro">PRO</span>' : ''}
     <span class="user-name">${esc(name)}</span>
     ${pic ? `<img class="avatar" src="${esc(pic)}" alt="">` : ''}`;
+  fetch(API + '/download/check').then(r => r.json()).then(d => {
+    const btn = $('#header-dl-btn');
+    if (btn && d.available) btn.style.display = '';
+  }).catch(() => {});
 }
 
 function nav(page, data) {
@@ -634,8 +643,10 @@ async function renderProfile() {
         <button class="btn btn-primary" onclick="nav('pro')">PRO болох</button>
       </div>`;
   }
-  html += `<button class="btn btn-danger btn-block" style="margin-top:20px" onclick="logout()">Гарах</button>`;
+  html += `<div id="profile-download" style="margin-top:16px"></div>`;
+  html += `<button class="btn btn-danger btn-block" style="margin-top:12px" onclick="logout()">Гарах</button>`;
   $('#app').innerHTML = html;
+  checkApkAvailable('profile-download');
 
   const input = $('#pname');
   let checkTimeout;
@@ -816,6 +827,25 @@ async function claimBankPayment(paymentId) {
     btn.disabled = false;
     btn.textContent = 'Шилжүүлсэн гэж мэдэгдэх';
   }
+}
+
+// ── App Download ───────────────────────────────────────────
+async function checkApkAvailable(containerId) {
+  try {
+    const res = await fetch(API + '/download/check');
+    const data = await res.json();
+    const el = document.getElementById(containerId);
+    if (!el || !data.available) return;
+    const sizeMB = (data.size / (1024 * 1024)).toFixed(1);
+    el.innerHTML = `
+      <a href="/api/download/app" class="download-btn" download>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        <div class="download-btn-text">
+          <span class="download-btn-title">Апп татах (Android)</span>
+          <span class="download-btn-size">${data.filename} · ${sizeMB} MB</span>
+        </div>
+      </a>`;
+  } catch {}
 }
 
 // ── Utilities ───────────────────────────────────────────────

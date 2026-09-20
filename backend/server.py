@@ -1465,6 +1465,23 @@ app.include_router(api_router)
 if IMAGES_DIR.exists():
     app.mount("/api/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 
+DOWNLOADS_DIR = ROOT_DIR / "downloads"
+if DOWNLOADS_DIR.exists():
+    @app.get("/api/download/app")
+    async def download_apk():
+        apk_files = sorted(DOWNLOADS_DIR.glob("*.apk"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if not apk_files:
+            raise HTTPException(404, "APK файл олдсонгүй")
+        return FileResponse(apk_files[0], filename=apk_files[0].name, media_type="application/vnd.android.package-archive")
+
+    @app.get("/api/download/check")
+    async def check_apk():
+        apk_files = sorted(DOWNLOADS_DIR.glob("*.apk"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if not apk_files:
+            return {"available": False}
+        f = apk_files[0]
+        return {"available": True, "filename": f.name, "size": f.stat().st_size}
+
 FRONTEND_DIR = ROOT_DIR / "frontend"
 if FRONTEND_DIR.exists():
     app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
