@@ -334,6 +334,24 @@ function showLogin() {
       <p class="subtitle">Замын хөдөлгөөний дүрмийн шалгалтад бэлдэх хамгийн хялбар арга</p>
       <div id="google-signin-btn"></div>
       ${!webClientId ? '<p style="color:var(--danger);font-size:.8rem;margin-top:12px">Google нэвтрэлт тохируулагдаагүй</p>' : ''}
+      <div style="width:100%;max-width:320px;margin-top:16px">
+        <button onclick="showCodeLoginForm()" class="code-login-toggle-btn">🔑 Кодоор нэвтрэх</button>
+      </div>
+      <div id="code-login-form" style="display:none;width:100%;max-width:320px;margin-top:16px">
+        <div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.08);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.15)">
+          <p style="color:rgba(255,255,255,0.85);font-size:.85rem;font-weight:600;margin:0">Утасны дугаар</p>
+          <input id="code-phone" type="tel" placeholder="99112233" maxlength="15" class="code-input-field">
+          <p style="color:rgba(255,255,255,0.85);font-size:.85rem;font-weight:600;margin:0">4 оронтой код</p>
+          <div style="display:flex;gap:8px;justify-content:center" id="code-digits-row">
+            <input class="code-digit" type="tel" maxlength="1" data-idx="0" oninput="codeDigitInput(this,0)" onkeydown="codeDigitKey(event,0)">
+            <input class="code-digit" type="tel" maxlength="1" data-idx="1" oninput="codeDigitInput(this,1)" onkeydown="codeDigitKey(event,1)">
+            <input class="code-digit" type="tel" maxlength="1" data-idx="2" oninput="codeDigitInput(this,2)" onkeydown="codeDigitKey(event,2)">
+            <input class="code-digit" type="tel" maxlength="1" data-idx="3" oninput="codeDigitInput(this,3)" onkeydown="codeDigitKey(event,3)">
+          </div>
+          <p id="code-error" style="color:#fca5a5;font-size:.8rem;text-align:center;margin:0;display:none"></p>
+          <button onclick="submitCodeLogin()" id="code-submit-btn" class="code-submit-btn">Нэвтрэх</button>
+        </div>
+      </div>
       <div class="login-features">
         <div class="login-feat"><div class="login-feat-icon">📝</div>800+ асуулт</div>
         <div class="login-feat"><div class="login-feat-icon">📊</div>Дэлгэрэнгүй статистик</div>
@@ -368,6 +386,58 @@ async function handleGoogleResponse(response) {
     showApp();
   } catch (e) {
     toast(e.message);
+  }
+}
+
+function showCodeLoginForm() {
+  const form = document.getElementById('code-login-form');
+  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+}
+
+function codeDigitInput(el, idx) {
+  el.value = el.value.replace(/\D/g, '').slice(0, 1);
+  if (el.value && idx < 3) {
+    const next = document.querySelectorAll('.code-digit')[idx + 1];
+    if (next) next.focus();
+  }
+}
+
+function codeDigitKey(e, idx) {
+  if (e.key === 'Backspace') {
+    const digits = document.querySelectorAll('.code-digit');
+    if (!digits[idx].value && idx > 0) {
+      digits[idx - 1].focus();
+    }
+  }
+}
+
+async function submitCodeLogin() {
+  const phone = (document.getElementById('code-phone')?.value || '').trim();
+  const digits = document.querySelectorAll('.code-digit');
+  const code = Array.from(digits).map(d => d.value).join('');
+  const errEl = document.getElementById('code-error');
+  const btn = document.getElementById('code-submit-btn');
+
+  if (phone.length < 6 || code.length < 4) {
+    if (errEl) { errEl.textContent = 'Утасны дугаар болон 4 оронтой код оруулна уу'; errEl.style.display = 'block'; }
+    return;
+  }
+  if (errEl) errEl.style.display = 'none';
+  if (btn) { btn.disabled = true; btn.textContent = 'Уншиж байна...'; }
+
+  try {
+    const data = await api('/auth/code-login', {
+      method: 'POST',
+      body: JSON.stringify({ phone, code }),
+    });
+    token = data.session_token;
+    user = data.user;
+    localStorage.setItem('token', token);
+    showApp();
+  } catch (e) {
+    if (errEl) { errEl.textContent = e.message || 'Нэвтрэхэд алдаа гарлаа'; errEl.style.display = 'block'; }
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Нэвтрэх'; }
   }
 }
 

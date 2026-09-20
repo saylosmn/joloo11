@@ -43,6 +43,7 @@ type AuthState = {
   /** Set when Google sign-in is not usable, with the reason. */
   configError: string | null;
   login: () => Promise<void>;
+  codeLogin: (phone: string, code: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   setUser: (u: User | null) => void;
@@ -159,6 +160,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [promptAsync, request]);
 
+  const codeLogin = useCallback(async (phone: string, code: string) => {
+    const res = await api.post<{ session_token: string; user: User }>("/auth/code-login", { phone, code });
+    await setToken(res.session_token);
+    setUser(res.user);
+  }, []);
+
   const logout = useCallback(async () => {
     try {
       await api.post("/auth/logout");
@@ -179,6 +186,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         signingIn: signingIn || (!user && config.isPending),
         configError,
         login,
+        codeLogin,
         logout,
         refreshUser,
         setUser,

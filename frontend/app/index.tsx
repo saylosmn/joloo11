@@ -2,7 +2,7 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMutation } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -46,7 +46,135 @@ function RedirectHome() {
 function LoginScreen() {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
-  const { login, signingIn, configError } = useAuth();
+  const { login, codeLogin, signingIn, configError } = useAuth();
+  const [showCodeLogin, setShowCodeLogin] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [digits, setDigits] = useState(["", "", "", ""]);
+  const [codeError, setCodeError] = useState<string | null>(null);
+  const [codeLoading, setCodeLoading] = useState(false);
+  const digitRefs = useRef<(TextInput | null)[]>([]);
+
+  const handleDigitChange = (text: string, index: number) => {
+    const cleaned = text.replace(/\D/g, "");
+    if (!cleaned) {
+      const next = [...digits];
+      next[index] = "";
+      setDigits(next);
+      return;
+    }
+    const next = [...digits];
+    next[index] = cleaned[0];
+    setDigits(next);
+    if (index < 3) digitRefs.current[index + 1]?.focus();
+  };
+
+  const handleDigitKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === "Backspace" && !digits[index] && index > 0) {
+      digitRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const fullCode = digits.join("");
+  const canSubmitCode = phone.trim().length >= 6 && fullCode.length === 4;
+
+  const handleCodeSubmit = async () => {
+    if (!canSubmitCode) return;
+    setCodeError(null);
+    setCodeLoading(true);
+    try {
+      await codeLogin(phone.trim(), fullCode);
+    } catch (e) {
+      setCodeError(e instanceof ApiError ? e.message : "Нэвтрэхэд алдаа гарлаа");
+    } finally {
+      setCodeLoading(false);
+    }
+  };
+
+  if (showCodeLogin) {
+    return (
+      <View style={styles.loginRoot}>
+        <LinearGradient
+          colors={["#1D4ED8", "#2563EB", "#1E3A8A"]}
+          style={styles.loginGradient}
+        >
+          <ScrollView
+            contentContainerStyle={[styles.loginInner, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Pressable onPress={() => setShowCodeLogin(false)} style={styles.backBtn}>
+              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+            </Pressable>
+
+            <View style={styles.brandBadge}>
+              <Ionicons name="key-outline" size={40} color="#FFFFFF" />
+            </View>
+            <Text style={styles.loginTitle}>Кодоор нэвтрэх</Text>
+            <Text style={styles.loginSubtitle}>
+              Админаас авсан утасны дугаар болон 4 оронтой кодоо оруулна уу.
+            </Text>
+
+            <View style={{ marginTop: 32, gap: 20 }}>
+              <View>
+                <Text style={styles.codeLabel}>Утасны дугаар</Text>
+                <View style={styles.phoneInputWrap}>
+                  <Ionicons name="call-outline" size={20} color="rgba(255,255,255,0.6)" />
+                  <TextInput
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholder="99112233"
+                    placeholderTextColor="rgba(255,255,255,0.35)"
+                    keyboardType="phone-pad"
+                    maxLength={15}
+                    style={styles.phoneInput}
+                  />
+                </View>
+              </View>
+
+              <View>
+                <Text style={styles.codeLabel}>4 оронтой код</Text>
+                <View style={styles.codeRow}>
+                  {[0, 1, 2, 3].map((i) => (
+                    <TextInput
+                      key={i}
+                      ref={(r) => { digitRefs.current[i] = r; }}
+                      value={digits[i]}
+                      onChangeText={(t) => handleDigitChange(t, i)}
+                      onKeyPress={(e) => handleDigitKeyPress(e, i)}
+                      keyboardType="number-pad"
+                      maxLength={1}
+                      style={styles.codeInput}
+                      textAlign="center"
+                      selectTextOnFocus
+                    />
+                  ))}
+                </View>
+              </View>
+
+              {codeError ? <Text style={styles.codeError}>{codeError}</Text> : null}
+
+              <Pressable
+                disabled={!canSubmitCode || codeLoading}
+                onPress={handleCodeSubmit}
+                style={({ pressed }) => [
+                  styles.googleBtn,
+                  { opacity: !canSubmitCode || pressed || codeLoading ? 0.7 : 1, marginTop: 8 },
+                ]}
+              >
+                {codeLoading ? (
+                  <LoadingWheel size={24} color="#1E293B" />
+                ) : (
+                  <>
+                    <Ionicons name="log-in-outline" size={20} color="#1D4ED8" />
+                    <Text style={styles.googleBtnText}>Нэвтрэх</Text>
+                  </>
+                )}
+              </Pressable>
+            </View>
+          </ScrollView>
+        </LinearGradient>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.loginRoot}>
@@ -89,6 +217,18 @@ function LoginScreen() {
                 </>
               )}
             </Pressable>
+
+            <Pressable
+              onPress={() => setShowCodeLogin(true)}
+              style={({ pressed }) => [
+                styles.codeLoginBtn,
+                { opacity: pressed ? 0.8 : 1 },
+              ]}
+            >
+              <Ionicons name="key-outline" size={18} color="#FFFFFF" />
+              <Text style={styles.codeLoginBtnText}>Кодоор нэвтрэх</Text>
+            </Pressable>
+
             <Text style={styles.loginHint}>
               {configError ?? "Нэвтэрснээр үйлчилгээний нөхцөлийг зөвшөөрч байгаа болно."}
             </Text>
@@ -246,6 +386,44 @@ const useStyles = makeStyles((colors) => ({
     gap: 10,
   },
   googleBtnText: { color: "#1E293B", fontSize: 16, fontFamily: font.bold },
+  codeLoginBtn: {
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.4)",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  codeLoginBtnText: { color: "#FFFFFF", fontSize: 15, fontFamily: font.semibold },
+  backBtn: { marginBottom: 20 },
+  codeLabel: { color: "rgba(255,255,255,0.85)", fontSize: 14, fontFamily: font.semibold, marginBottom: 8 },
+  phoneInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 52,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    paddingHorizontal: 14,
+    backgroundColor: "rgba(255,255,255,0.1)",
+  },
+  phoneInput: { flex: 1, fontSize: 17, color: "#FFFFFF", fontFamily: font.semibold },
+  codeRow: { flexDirection: "row", justifyContent: "center", gap: 12 },
+  codeInput: {
+    width: 56,
+    height: 64,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "rgba(255,255,255,0.3)",
+    backgroundColor: "rgba(255,255,255,0.1)",
+    color: "#FFFFFF",
+    fontSize: 28,
+    fontFamily: font.extrabold,
+  },
+  codeError: { color: "#FCA5A5", fontSize: 13, textAlign: "center", fontFamily: font.medium },
   loginHint: { color: "rgba(255,255,255,0.7)", fontSize: 12, textAlign: "center", fontFamily: font.regular },
 
   setupContent: { paddingHorizontal: 24 },

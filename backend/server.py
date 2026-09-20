@@ -163,6 +163,11 @@ class GoogleSignIn(BaseModel):
     id_token: str
 
 
+class CodeLoginRequest(BaseModel):
+    phone: str
+    code: str
+
+
 class NameRequest(BaseModel):
     name: str
 
@@ -249,6 +254,48 @@ async def auth_google(body: GoogleSignIn):
             "profileNameLower": None,
             "isPro": False,
             "proActivatedAt": None,
+            "createdAt": now_utc().isoformat(),
+            "lastLoginAt": now_utc().isoformat(),
+        })
+
+    token = await issue_session(user_id)
+    user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
+    return {"session_token": token, "user": user}
+
+
+@api_router.post("/auth/code-login")
+async def auth_code_login(body: CodeLoginRequest):
+    """Login with a phone number and 4-digit access code assigned by the admin."""
+    phone = re.sub(r"\D", "", body.phone.strip())
+    code = body.code.strip()
+    if not phone or not code:
+        raise HTTPException(status_code=400, detail="Утасны дугаар болон код шаардлагатай")
+
+    entry = await db.access_codes.find_one({"phone": phone, "code": code})
+    if not entry:
+        raise HTTPException(status_code=401, detail="Утасны дугаар эсвэл код буруу байна")
+
+    existing = await db.users.find_one({"phone": phone})
+    if existing:
+        user_id = existing["user_id"]
+        await db.users.update_one(
+            {"user_id": user_id},
+            {"$set": {"lastLoginAt": now_utc().isoformat(), "isPro": True}},
+        )
+    else:
+        user_id = f"user_{uuid.uuid4().hex[:12]}"
+        await db.users.insert_one({
+            "user_id": user_id,
+            "phone": phone,
+            "email": None,
+            "google_sub": None,
+            "name": f"User {phone[-4:]}",
+            "picture": None,
+            "profileName": None,
+            "profileNameLower": None,
+            "isPro": True,
+            "proActivatedAt": now_utc().isoformat(),
+            "proSource": "code",
             "createdAt": now_utc().isoformat(),
             "lastLoginAt": now_utc().isoformat(),
         })
@@ -1297,6 +1344,24 @@ async def handle_admin_command(chat_id, text):
         return await deactivate(text[7:].strip())
     if low.startswith("/check "):
         return await check(text[7:].strip())
+    if low.startswith("/addnumber "):
+        parts = text[11:].strip().split()
+        if not parts:
+            return "❌ Формат: /addnumber 99112233"
+        raw_phone = re.sub(r"\D", "", parts[0])
+        if not raw_phone or len(raw_phone) < 6:
+            return "❌ Утасны дугаар буруу байна."
+        code = str(random.randint(1000, 9999))
+        await db.access_codes.update_one(
+            {"phone": raw_phone},
+            {"$set": {"phone": raw_phone, "code": code, "createdAt": now_utc().isoformat()}},
+            upsert=True,
+        )
+        return (f"✅ Дугаар нэмэгдлээ!\n\n"
+                f"📱 Дугаар: <code>{raw_phone}</code>\n"
+                f"🔑 Код: <code>{code}</code>\n\n"
+                f"Хэрэглэгч энэ дугаар + кодоор нэвтэрч PRO хувилбараар ашиглах боломжтой.")
+
     if low in ("/start", "/help"):
         return ("Админ командууд:\n"
                 "<code>&lt;профайл нэр&gt;</code> эсвэл /pro нэр → PRO идэвхжүүлэх\n"
@@ -1304,7 +1369,8 @@ async def handle_admin_command(chat_id, text):
                 "/check нэр → төлөв харах\n"
                 "/list → PRO хэрэглэгчид\n"
                 "/pending → баталгаажаагүй шилжүүлгүүд\n"
-                "/stats → хэрэглэгч, идэвх, орлогын тойм")
+                "/stats → хэрэглэгч, идэвх, орлогын тойм\n"
+                "/addnumber 99112233 → утасны дугаар + код нэмэх (PRO нэвтрэлт)")
     # plain text = profile name to activate
     if text and not text.startswith("/"):
         return await activate(text)
@@ -1552,6 +1618,8 @@ async def on_startup():
     await db.categories.create_index("category_id", unique=True)
     await db.userProgress.create_index([("user_id", 1), ("isBookmarked", 1)])
     await db.userProgress.create_index([("user_id", 1), ("isCorrect", 1)])
+    await db.access_codes.create_index("phone", unique=True)
+    await db.users.create_index("phone", unique=True, sparse=True)
     logger.info("Indexes ready")
     await cleanup_stale()
     # Auto-seed questions/categories on an empty DB so a fresh deploy works out of the box.
