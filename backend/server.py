@@ -1880,6 +1880,26 @@ async def root():
 app.include_router(api_router)
 
 if IMAGES_DIR.exists():
+    # The workbook only embedded 240x150 JPEGs. `scripts/enhance_images.py` renders a
+    # sharp 960x600 WebP next to each one, so serve that when the browser takes WebP
+    # while keeping the original `/api/images/q_<n>.jpg` URLs working everywhere.
+    @app.get("/api/images/{name}")
+    async def serve_question_image(name: str, request: Request):
+        if "/" in name or "\\" in name or ".." in name:
+            raise HTTPException(404, "Зураг олдсонгүй")
+        source = (IMAGES_DIR / name).resolve()
+        if not source.is_relative_to(IMAGES_DIR):
+            raise HTTPException(404, "Зураг олдсонгүй")
+        headers = {"Cache-Control": "public, max-age=31536000, immutable"}
+        hi_res = source.with_suffix(".webp")
+        if hi_res.is_file() and "image/webp" in request.headers.get("accept", ""):
+            return FileResponse(hi_res, media_type="image/webp", headers=headers)
+        if not source.is_file():
+            if not hi_res.is_file():
+                raise HTTPException(404, "Зураг олдсонгүй")
+            return FileResponse(hi_res, media_type="image/webp", headers=headers)
+        return FileResponse(source, headers=headers)
+
     app.mount("/api/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 
 APK_DOWNLOAD_URL = os.environ.get("APK_DOWNLOAD_URL", "")
