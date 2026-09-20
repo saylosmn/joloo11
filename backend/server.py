@@ -1465,6 +1465,17 @@ app.include_router(api_router)
 if IMAGES_DIR.exists():
     app.mount("/api/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 
+FRONTEND_DIR = ROOT_DIR / "frontend"
+if FRONTEND_DIR.exists():
+    app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        file = (FRONTEND_DIR / full_path).resolve()
+        if file.is_relative_to(FRONTEND_DIR) and file.exists() and file.is_file():
+            return FileResponse(file)
+        return FileResponse(FRONTEND_DIR / "index.html")
+
 # The app authenticates with a Bearer header, not cookies, so credentialed
 # requests are not needed — and "*" with credentials is rejected by browsers anyway.
 # An unset OR blank CORS_ORIGINS means "no restriction". Without the `or ["*"]`
