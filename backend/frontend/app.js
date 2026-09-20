@@ -100,6 +100,202 @@ function showSkeleton(count = 4) {
   return html;
 }
 
+// ── Widget builders ─────────────────────────────────────────
+function buildProgressRingWidget(pct) {
+  const r = 54, c = 2 * Math.PI * r;
+  const offset = c - (pct / 100) * c;
+  const color = pct >= 75 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#6366f1';
+  return `
+    <div class="widget-card" style="animation-delay:.08s">
+      <div style="display:flex;align-items:center;gap:20px">
+        <div class="progress-ring" style="width:120px;height:120px;flex-shrink:0">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="${r}" fill="none" stroke="var(--surface2)" stroke-width="10"/>
+            <circle cx="60" cy="60" r="${r}" fill="none" stroke="${color}" stroke-width="10"
+              stroke-dasharray="${c}" stroke-dashoffset="${offset}" stroke-linecap="round"
+              style="filter:drop-shadow(0 2px 8px ${color}40);transition:stroke-dashoffset 1.2s var(--ease-out-expo)"/>
+          </svg>
+          <div class="progress-text">
+            <span style="font-size:1.6rem;font-weight:900;color:${color}">${pct}%</span>
+            <span style="font-size:.6rem;color:var(--text3);font-weight:600">дэвшилт</span>
+          </div>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:800;font-size:.95rem;margin-bottom:6px">Нийт дэвшилт</div>
+          <div style="font-size:.78rem;color:var(--text2);line-height:1.6;margin-bottom:10px">
+            ${pct >= 75 ? 'Маш сайн! Та бараг бэлэн байна 🎉' : pct >= 40 ? 'Сайн ажиллаж байна! Үргэлжлүүлээрэй 💪' : 'Эхлэл сайхан! Дасгал хийгээрэй 📖'}
+          </div>
+          <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+            <div style="height:100%;width:${pct}%;background:${color};border-radius:3px;transition:width 1s var(--ease-out-expo)"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+}
+
+function buildDailyGoalWidget(done, total) {
+  const todayKey = new Date().toDateString();
+  const todayDone = parseInt(localStorage.getItem('daily_' + todayKey) || '0');
+  const dailyGoal = 20;
+  const goalPct = Math.min(100, Math.round((todayDone / dailyGoal) * 100));
+  const segments = [];
+  for (let i = 0; i < 5; i++) {
+    const filled = todayDone >= (i + 1) * (dailyGoal / 5);
+    segments.push(`<div class="goal-segment ${filled ? 'filled' : ''}" style="animation-delay:${i * .08}s"></div>`);
+  }
+  return `
+    <div class="widget-card widget-daily-goal" style="animation-delay:.05s">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="widget-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.12),rgba(139,92,246,.12))">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.5" stroke-linecap="round"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:800;font-size:.88rem">Өнөөдрийн зорилт</div>
+            <div style="font-size:.7rem;color:var(--text3);font-weight:500">${todayDone}/${dailyGoal} асуулт</div>
+          </div>
+        </div>
+        <div class="goal-pct" style="color:${goalPct >= 100 ? 'var(--success)' : 'var(--primary)'}">${goalPct}%</div>
+      </div>
+      <div class="goal-segments">${segments.join('')}</div>
+      ${goalPct >= 100 ? '<div style="text-align:center;margin-top:10px;font-size:.78rem;color:var(--success);font-weight:700">✨ Өнөөдрийн зорилт биелсэн!</div>' : ''}
+    </div>`;
+}
+
+function buildWeeklyHeatmap() {
+  const days = ['Да', 'Мя', 'Лх', 'Пү', 'Ба', 'Бя', 'Ня'];
+  const today = new Date();
+  const dayOfWeek = today.getDay();
+  let cells = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(d.getDate() - (6 - i));
+    const key = 'daily_' + d.toDateString();
+    const count = parseInt(localStorage.getItem(key) || '0');
+    const level = count === 0 ? 0 : count < 5 ? 1 : count < 15 ? 2 : count < 30 ? 3 : 4;
+    const isToday = i === 6;
+    cells += `
+      <div class="heatmap-day ${isToday ? 'today' : ''}" style="animation-delay:${i * .04}s">
+        <div class="heatmap-label">${days[(dayOfWeek - 6 + i + 7) % 7]}</div>
+        <div class="heatmap-cell level-${level}" title="${count} асуулт"></div>
+        <div class="heatmap-count">${count}</div>
+      </div>`;
+  }
+  return `
+    <div class="widget-card" style="animation-delay:.12s">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div class="widget-icon" style="background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(5,150,105,.12))">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div style="font-weight:800;font-size:.88rem">Долоо хоногийн идэвхи</div>
+      </div>
+      <div class="heatmap-row">${cells}</div>
+      <div class="heatmap-legend">
+        <span style="font-size:.65rem;color:var(--text3)">Бага</span>
+        <div class="heatmap-cell level-0" style="width:14px;height:14px"></div>
+        <div class="heatmap-cell level-1" style="width:14px;height:14px"></div>
+        <div class="heatmap-cell level-2" style="width:14px;height:14px"></div>
+        <div class="heatmap-cell level-3" style="width:14px;height:14px"></div>
+        <div class="heatmap-cell level-4" style="width:14px;height:14px"></div>
+        <span style="font-size:.65rem;color:var(--text3)">Их</span>
+      </div>
+    </div>`;
+}
+
+function buildMotivationalQuote() {
+  const quotes = [
+    { text: 'Бүх зүйл дасгалаар эхэлдэг.', emoji: '💪' },
+    { text: 'Өнөөдрийн хичээл, маргаашийн амжилт.', emoji: '🌟' },
+    { text: 'Алхам бүр зорилгод ойртуулна.', emoji: '🎯' },
+    { text: 'Тууштай байвал бүх зүйл боломжтой.', emoji: '🔥' },
+    { text: 'Мэдлэг бол хамгийн үнэтэй хөрөнгө.', emoji: '📚' },
+    { text: 'Амжилт бол сонголт, тохиол биш.', emoji: '⭐' },
+    { text: 'Бэлтгэл сайтай бол шалгалт хялбар.', emoji: '✨' },
+    { text: 'Өөрийгөө хөгжүүл, ирээдүйгээ бүтээ.', emoji: '🚀' },
+  ];
+  const q = quotes[Math.floor(Math.random() * quotes.length)];
+  return `
+    <div class="widget-card widget-quote" style="animation-delay:.15s">
+      <div class="quote-emoji">${q.emoji}</div>
+      <div class="quote-text">"${q.text}"</div>
+      <div class="quote-label">Өнөөдрийн зоригийн үг</div>
+    </div>`;
+}
+
+function buildTopCategoriesWidget(cats, gradients) {
+  const sorted = cats.filter(c => !c.locked && c.completed > 0).sort((a, b) => {
+    const pA = a.questionCount ? a.completed / a.questionCount : 0;
+    const pB = b.questionCount ? b.completed / b.questionCount : 0;
+    return pB - pA;
+  }).slice(0, 3);
+  if (!sorted.length) return '';
+  let items = '';
+  sorted.forEach((c, i) => {
+    const pct = c.questionCount ? Math.round((c.completed / c.questionCount) * 100) : 0;
+    const ci = cats.indexOf(c);
+    const [c1] = gradients[ci % gradients.length];
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉';
+    items += `
+      <div class="top-cat-item" style="animation-delay:${i * .06}s" onclick="nav('category','${c.category_id}')">
+        <div class="top-cat-medal">${medal}</div>
+        <div class="top-cat-info">
+          <div class="top-cat-name">${esc(c.name)}</div>
+          <div class="top-cat-bar">
+            <div class="top-cat-fill" style="width:${pct}%;background:${c1}"></div>
+          </div>
+        </div>
+        <div class="top-cat-pct" style="color:${c1}">${pct}%</div>
+      </div>`;
+  });
+  return `
+    <div class="widget-card" style="animation-delay:.18s">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div class="widget-icon" style="background:linear-gradient(135deg,rgba(245,158,11,.12),rgba(249,115,22,.12))">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"><path d="M6 9H4.5a2.5 2.5 0 010-5C7 4 7 7 7 7"/><path d="M18 9h1.5a2.5 2.5 0 000-5C17 4 17 7 17 7"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 1012 0V2Z"/></svg>
+        </div>
+        <div style="font-weight:800;font-size:.88rem">Шилдэг бүлгүүд</div>
+      </div>
+      ${items}
+    </div>`;
+}
+
+function buildAchievementWidget(stats) {
+  const achievements = [];
+  if (stats.totalAnswered >= 10) achievements.push({ icon: '🌱', title: 'Эхлэгч', desc: '10 асуулт хариулсан' });
+  if (stats.totalAnswered >= 100) achievements.push({ icon: '📖', title: 'Суралцагч', desc: '100 асуулт хариулсан' });
+  if (stats.totalAnswered >= 500) achievements.push({ icon: '🧠', title: 'Мэргэжилтэн', desc: '500 асуулт хариулсан' });
+  if (stats.examsPassed >= 1) achievements.push({ icon: '✅', title: 'Анхны тэнцэлт', desc: 'Шалгалтад тэнцсэн' });
+  if (stats.examsPassed >= 5) achievements.push({ icon: '🏅', title: 'Туршлагатай', desc: '5 шалгалтад тэнцсэн' });
+  if (stats.currentStreak >= 3) achievements.push({ icon: '🔥', title: 'Халуун цуваа', desc: `${stats.currentStreak} хоног дараалсан` });
+  if (stats.currentStreak >= 7) achievements.push({ icon: '💎', title: 'Долоо хоногийн аварга', desc: '7 хоног дараалсан' });
+  if (stats.correctPercent >= 80) achievements.push({ icon: '🎯', title: 'Оноо буугч', desc: '80%+ зөв хариулт' });
+  if (!achievements.length) {
+    achievements.push({ icon: '🌟', title: 'Эхлээд үз', desc: 'Асуулт хариулж эхлээрэй' });
+  }
+  let items = achievements.slice(0, 4).map((a, i) => `
+    <div class="achievement-item" style="animation-delay:${i * .06}s">
+      <div class="achievement-icon">${a.icon}</div>
+      <div class="achievement-title">${a.title}</div>
+      <div class="achievement-desc">${a.desc}</div>
+    </div>`).join('');
+  return `
+    <div class="widget-card" style="animation-delay:.1s">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <div class="widget-icon" style="background:linear-gradient(135deg,rgba(236,72,153,.12),rgba(139,92,246,.12))">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ec4899" stroke-width="2.5" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        </div>
+        <div style="font-weight:800;font-size:.88rem">Амжилтууд</div>
+      </div>
+      <div class="achievement-grid">${items}</div>
+    </div>`;
+}
+
+function trackDailyQuestion() {
+  const key = 'daily_' + new Date().toDateString();
+  const c = parseInt(localStorage.getItem(key) || '0');
+  localStorage.setItem(key, String(c + 1));
+}
+
 // ── Auth ────────────────────────────────────────────────────
 async function initApp() {
   try { config = await api('/config'); } catch { config = {}; }
@@ -267,19 +463,33 @@ async function renderHome() {
         </div>
       </div>
 
-      <div class="quick-actions">
+      ${buildDailyGoalWidget(totalDone, totalQ)}
+
+      ${buildProgressRingWidget(overallPct)}
+
+      <div class="quick-actions" style="grid-template-columns:1fr 1fr 1fr">
         <div class="quick-action" onclick="nav('exam')" style="animation-delay:.05s">
           <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.1))">🎯</div>
-          <div class="quick-action-label">Шалгалт өгөх</div>
+          <div class="quick-action-label">Шалгалт</div>
         </div>
         <div class="quick-action" onclick="nav('stats')" style="animation-delay:.1s">
           <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(5,150,105,.1))">📊</div>
           <div class="quick-action-label">Статистик</div>
         </div>
+        <div class="quick-action" onclick="nav('bookmarks')" style="animation-delay:.15s">
+          <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(245,158,11,.1),rgba(249,115,22,.1))">⭐</div>
+          <div class="quick-action-label">Хадгалсан</div>
+        </div>
       </div>
 
+      ${buildWeeklyHeatmap()}
+
+      ${buildMotivationalQuote()}
+
+      ${buildTopCategoriesWidget(cats, gradients)}
+
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
-        <h2 class="section-title" style="margin-bottom:0">Бүлгүүд</h2>
+        <h2 class="section-title" style="margin-bottom:0">📚 Бүх бүлгүүд</h2>
         <span style="font-size:.75rem;color:var(--text3);font-weight:600">${cats.length} бүлэг</span>
       </div>
 
@@ -423,6 +633,7 @@ async function answerPractice(qid, key) {
     if (res.explanation) {
       $('#q-feedback').innerHTML = `<div class="q-explanation">💡 ${esc(res.explanation)}</div>`;
     }
+    trackDailyQuestion();
     const q = practiceData.questions[practiceData.index];
     if (q) q._answered = true;
   } catch (e) {
@@ -823,7 +1034,13 @@ async function renderStats() {
           <div style="font-size:1.4rem;font-weight:900;color:var(--success)">${s.examsPassed}</div>
           <div style="font-size:.7rem;color:var(--text3);font-weight:600;margin-top:2px">Тэнцсэн</div>
         </div>
-      </div>`;
+      </div>
+
+      ${buildProgressRingWidget(s.correctPercent || 0)}
+
+      ${buildAchievementWidget(s)}
+
+      ${buildWeeklyHeatmap()}`;
 
     if (s.perCategory && s.perCategory.length) {
       html += '<h2 class="section-title" style="margin-top:8px">📚 Бүлгээр</h2>';

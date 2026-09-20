@@ -540,3 +540,65 @@ header.scrolled::after{opacity:.6}
 
 /* ---------- keyboard shortcuts hint ---------- */
 .kbd{display:inline-flex;padding:2px 8px;background:var(--surface2);border:1px solid var(--border-solid);border-radius:6px;font-size:.65rem;font-weight:700;color:var(--text3);font-family:'Inter',monospace}
+
+/* ========== WIDGETS ========== */
+
+/* ---------- widget card base ---------- */
+.widget-card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow-card);padding:20px;margin-bottom:14px;border:1px solid var(--border);animation:fadeInScale .5s var(--ease-out-expo) backwards;position:relative;overflow:hidden;transition:all .3s var(--ease-out-expo)}
+.widget-card:hover{box-shadow:var(--shadow-md)}
+.widget-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:transform .3s var(--ease-spring)}
+.widget-card:hover .widget-icon{transform:scale(1.08) rotate(-3deg)}
+
+/* ---------- daily goal widget ---------- */
+.widget-daily-goal .goal-pct{font-size:1.4rem;font-weight:900}
+.goal-segments{display:flex;gap:6px}
+.goal-segment{flex:1;height:8px;border-radius:4px;background:var(--surface2);transition:all .4s var(--ease-out-expo);animation:fadeInScale .3s var(--ease-out-expo) backwards;position:relative;overflow:hidden}
+.goal-segment.filled{background:var(--gradient-primary);box-shadow:0 2px 8px rgba(99,102,241,.25)}
+.goal-segment.filled::after{content:'';position:absolute;top:0;left:0;right:0;bottom:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);animation:shimmer 2s infinite}
+
+/* ---------- weekly heatmap ---------- */
+.heatmap-row{display:flex;gap:6px;justify-content:space-between}
+.heatmap-day{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;animation:fadeInScale .4s var(--ease-out-expo) backwards}
+.heatmap-label{font-size:.6rem;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.03em}
+.heatmap-cell{width:100%;aspect-ratio:1;border-radius:8px;transition:all .3s var(--ease-spring);cursor:default}
+.heatmap-cell.level-0{background:var(--surface2)}
+.heatmap-cell.level-1{background:rgba(99,102,241,.15)}
+.heatmap-cell.level-2{background:rgba(99,102,241,.3)}
+.heatmap-cell.level-3{background:rgba(99,102,241,.55)}
+.heatmap-cell.level-4{background:var(--primary);box-shadow:0 2px 10px rgba(99,102,241,.3)}
+.heatmap-cell:hover{transform:scale(1.15);box-shadow:var(--shadow-md)}
+.heatmap-day.today .heatmap-cell{border:2px solid var(--primary);box-shadow:0 0 0 3px var(--primary-glow)}
+.heatmap-day.today .heatmap-label{color:var(--primary);font-weight:800}
+.heatmap-count{font-size:.6rem;font-weight:700;color:var(--text3)}
+.heatmap-legend{display:flex;align-items:center;gap:4px;justify-content:center;margin-top:12px}
+
+/* ---------- motivational quote ---------- */
+.widget-quote{text-align:center;padding:24px 20px;background:linear-gradient(135deg,var(--surface) 0%,rgba(99,102,241,.04) 50%,rgba(139,92,246,.04) 100%)}
+.widget-quote::before{content:'';position:absolute;top:-30%;right:-20%;width:180px;height:180px;border-radius:50%;background:rgba(139,92,246,.04);pointer-events:none}
+.quote-emoji{font-size:2.2rem;margin-bottom:12px;animation:float 4s ease-in-out infinite}
+.quote-text{font-size:1rem;font-weight:700;line-height:1.7;letter-spacing:-.01em;color:var(--text);margin-bottom:8px}
+.quote-label{font-size:.7rem;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+
+/* ---------- top categories widget ---------- */
+.top-cat-item{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-xs);margin-bottom:6px;cursor:pointer;transition:all .3s var(--ease-out-expo);animation:fadeInScale .4s var(--ease-out-expo) backwards;background:var(--surface)}
+.top-cat-item:hover{background:var(--surface2);transform:translateX(4px)}
+.top-cat-medal{font-size:1.3rem;flex-shrink:0;transition:transform .3s var(--ease-spring)}
+.top-cat-item:hover .top-cat-medal{transform:scale(1.2) rotate(-5deg)}
+.top-cat-info{flex:1;min-width:0}
+.top-cat-name{font-size:.8rem;font-weight:600;margin-bottom:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.top-cat-bar{height:6px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.top-cat-fill{height:100%;border-radius:3px;transition:width .8s var(--ease-out-expo)}
+.top-cat-pct{font-size:.88rem;font-weight:900;flex-shrink:0;min-width:36px;text-align:right}
+
+/* ---------- achievement widget ---------- */
+.achievement-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.achievement-item{display:flex;flex-direction:column;align-items:center;text-align:center;padding:16px 10px;border-radius:var(--radius-sm);background:var(--surface2);transition:all .3s var(--ease-out-expo);animation:fadeInScale .45s var(--ease-out-expo) backwards;cursor:default;border:1px solid transparent}
+.achievement-item:hover{transform:translateY(-3px);box-shadow:var(--shadow-md);border-color:var(--border)}
+.achievement-icon{font-size:1.8rem;margin-bottom:6px;transition:transform .3s var(--ease-spring)}
+.achievement-item:hover .achievement-icon{transform:scale(1.2) rotate(-5deg)}
+.achievement-title{font-size:.78rem;font-weight:800;color:var(--text);margin-bottom:2px}
+.achievement-desc{font-size:.65rem;color:var(--text3);font-weight:500;line-height:1.4}
+
+/* ---------- widget shimmer overlay ---------- */
+.widget-card::after{content:'';position:absolute;top:0;left:-100%;width:60%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.03),transparent);pointer-events:none;transition:left .8s ease}
+.widget-card:hover::after{left:150%}
