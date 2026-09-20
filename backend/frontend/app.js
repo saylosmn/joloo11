@@ -26,6 +26,22 @@ function toast(msg, ms = 2500) {
   setTimeout(() => el.classList.remove('show'), ms);
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 6) return 'Сайн шөнө';
+  if (h < 12) return 'Өглөөний мэнд';
+  if (h < 18) return 'Өдрийн мэнд';
+  return 'Оройн мэнд';
+}
+
+function showSkeleton(count = 4) {
+  let html = '';
+  for (let i = 0; i < count; i++) {
+    html += `<div class="skeleton skeleton-card" style="animation-delay:${i * .1}s"></div>`;
+  }
+  return html;
+}
+
 // ── Auth ────────────────────────────────────────────────────
 async function initApp() {
   try { config = await api('/config'); } catch { config = {}; }
@@ -49,22 +65,29 @@ function showLogin() {
   const webClientId = config?.google?.webClientId;
   $('#app').innerHTML = `
     <div class="login-screen">
+      <div class="login-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+      </div>
       <div class="login-hero">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
         </svg>
       </div>
+      <div class="login-tagline">Монголын #1 жолооны апп</div>
       <h1>ЗХД Шалгалт</h1>
       <p class="subtitle">Замын хөдөлгөөний дүрмийн шалгалтад бэлдэх хамгийн хялбар арга</p>
       <div id="google-signin-btn"></div>
       ${!webClientId ? '<p style="color:var(--danger);font-size:.8rem;margin-top:12px">Google нэвтрэлт тохируулагдаагүй</p>' : ''}
       <div class="login-features">
         <div class="login-feat"><div class="login-feat-icon">📝</div>800+ асуулт</div>
-        <div class="login-feat"><div class="login-feat-icon">📊</div>Статистик</div>
-        <div class="login-feat"><div class="login-feat-icon">🎯</div>Шалгалт</div>
+        <div class="login-feat"><div class="login-feat-icon">📊</div>Дэлгэрэнгүй статистик</div>
+        <div class="login-feat"><div class="login-feat-icon">🎯</div>Жинхэнэ шалгалт</div>
         <div class="login-feat"><div class="login-feat-icon">🏆</div>36 бүлэг</div>
       </div>
-      <div id="login-download" style="margin-top:24px"></div>
+      <div id="login-download" style="margin-top:24px;width:100%;max-width:320px"></div>
+      <button class="theme-toggle" id="login-theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10" title="Горим солих">☀️</button>
     </div>`;
   if (webClientId && window.google) {
     google.accounts.id.initialize({
@@ -76,6 +99,7 @@ function showLogin() {
     });
   }
   checkApkAvailable('login-download');
+  updateThemeIcon();
 }
 
 async function handleGoogleResponse(response) {
@@ -116,7 +140,7 @@ function renderHeader() {
     <a href="/api/download/app" class="header-download-btn" id="header-dl-btn" style="display:none" title="Апп татах" download>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
     </a>
-    ${user?.isPro ? '<span class="badge badge-pro">PRO</span>' : ''}
+    ${user?.isPro ? '<span class="badge badge-pro" style="animation:none;font-size:.6rem;padding:3px 8px">PRO</span>' : ''}
     <span class="user-name">${esc(name)}</span>
     ${pic ? `<img class="avatar" src="${esc(pic)}" alt="">` : ''}
     <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Горим солих">☀️</button>`;
@@ -160,29 +184,95 @@ async function renderHome() {
       ['#06b6d4','#0891b2'],['#ef4444','#dc2626'],['#6366f1','#4f46e5'],
       ['#eab308','#ca8a04']
     ];
+    const totalQ = cats.reduce((s, c) => s + (c.questionCount || 0), 0);
+    const totalDone = cats.reduce((s, c) => s + (c.completed || 0), 0);
+    const overallPct = totalQ ? Math.round((totalDone / totalQ) * 100) : 0;
+    const firstName = (user?.profileName || user?.name || '').split(' ')[0] || 'Хэрэглэгч';
+
     let html = `
-      <div style="margin-bottom:16px">
-        <h2 class="section-title" style="margin-bottom:4px">Бүлгүүд</h2>
-        <p style="font-size:.82rem;color:var(--text3);font-weight:500">${cats.length} бүлэг · Бүлэг сонгож дасгал хийгээрэй</p>
-      </div>`;
+      <div class="welcome-banner">
+        <h2>${getGreeting()}, ${esc(firstName)}! 👋</h2>
+        <p>Өнөөдөр ч давтлага хийгээрэй</p>
+        <div class="welcome-stats">
+          <div class="welcome-stat">
+            <div class="welcome-stat-value">${overallPct}%</div>
+            <div class="welcome-stat-label">Нийт дэвшилт</div>
+          </div>
+          <div class="welcome-stat">
+            <div class="welcome-stat-value">${totalDone}</div>
+            <div class="welcome-stat-label">Хариулсан</div>
+          </div>
+          <div class="welcome-stat">
+            <div class="welcome-stat-value">${cats.length}</div>
+            <div class="welcome-stat-label">Бүлэг</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="quick-actions">
+        <div class="quick-action" onclick="nav('exam')" style="animation-delay:.05s">
+          <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.1))">🎯</div>
+          <div class="quick-action-label">Шалгалт өгөх</div>
+        </div>
+        <div class="quick-action" onclick="nav('stats')" style="animation-delay:.1s">
+          <div class="quick-action-icon" style="background:linear-gradient(135deg,rgba(16,185,129,.1),rgba(5,150,105,.1))">📊</div>
+          <div class="quick-action-label">Статистик</div>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h2 class="section-title" style="margin-bottom:0">Бүлгүүд</h2>
+        <span style="font-size:.75rem;color:var(--text3);font-weight:600">${cats.length} бүлэг</span>
+      </div>
+
+      <div class="search-bar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="cat-search" placeholder="Бүлэг хайх..." oninput="filterCategories(this.value)">
+      </div>
+
+      <div id="cat-list">`;
+
     cats.forEach((c, i) => {
       const [c1, c2] = gradients[i % gradients.length];
+      const pct = c.questionCount ? Math.round((c.completed / c.questionCount) * 100) : 0;
       html += `
-      <div class="cat-item ${c.locked ? 'locked' : ''}" style="animation-delay:${i * .04}s" onclick="${c.locked ? `nav('pro')` : `nav('category','${c.category_id}')`}">
-        <div class="cat-icon" style="background:linear-gradient(135deg,${c1}18,${c2}25);color:${c1}">${i + 1}</div>
+      <div class="cat-item ${c.locked ? 'locked' : ''}" data-name="${esc(c.name).toLowerCase()}" style="animation-delay:${i * .03}s" onclick="${c.locked ? `nav('pro')` : `nav('category','${c.category_id}')`}">
+        <div class="cat-icon" style="background:linear-gradient(135deg,${c1}15,${c2}22);color:${c1}">
+          ${c.locked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' : (i + 1)}
+        </div>
         <div class="cat-info">
           <div class="cat-name">${esc(c.name)}</div>
           <div class="cat-meta">
-            <span>${c.completed}/${c.questionCount} асуулт</span>
-            ${c.locked ? '<span class="badge badge-pro" style="font-size:.6rem;padding:1px 6px">PRO</span>' : ''}
+            <span>${c.completed}/${c.questionCount}</span>
+            ${c.locked ? '<span class="badge badge-pro" style="font-size:.55rem;padding:1px 6px;animation:none">PRO</span>' : `<span style="color:${c1};font-weight:700">${pct}%</span>`}
           </div>
           ${!c.locked ? `<div class="cat-progress"><div class="cat-progress-bar" style="width:${c.progressPercent}%"></div></div>` : ''}
         </div>
-        ${c.locked ? '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text3);flex-shrink:0"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>' : `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text3);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>`}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="color:var(--text3);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
       </div>`;
     });
+    html += '</div>';
+
+    if (!user?.isPro) {
+      html += `
+        <div class="tip-card" style="margin-top:16px;cursor:pointer" onclick="nav('pro')">
+          <div class="tip-card-icon">💎</div>
+          <div><strong>PRO-д шинэчлэх</strong> — Бүх 36 бүлэг, хязгааргүй шалгалт, алдаатай асуултын горим</div>
+        </div>`;
+    }
+
     $('#app').innerHTML = html;
-  } catch (e) { $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  } catch (e) {
+    $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div><div class="empty-title">Алдаа гарлаа</div>${esc(e.message)}</div>`;
+  }
+}
+
+function filterCategories(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('#cat-list .cat-item').forEach(el => {
+    const name = el.getAttribute('data-name') || '';
+    el.style.display = !q || name.includes(q) ? '' : 'none';
+  });
 }
 
 // ── Category questions (practice) ───────────────────────────
@@ -195,42 +285,54 @@ async function renderCategory(catId) {
     renderPracticeQuestion();
   } catch (e) {
     if (e.message.includes('PRO')) { nav('pro'); return; }
-    $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+    $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`;
   }
 }
 
 function renderPractice(data) {
-  if (data && data.questions) {
-    practiceData = data;
-  }
+  if (data && data.questions) practiceData = data;
   renderPracticeQuestion();
 }
 
 function renderPracticeQuestion() {
   const { questions, index } = practiceData;
-  if (!questions.length) { $('#app').innerHTML = '<div class="empty">Асуулт олдсонгүй</div>'; return; }
+  if (!questions.length) { $('#app').innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div class="empty-title">Асуулт олдсонгүй</div></div>'; return; }
   const q = questions[index];
   const backLabel = q.category_name || 'Буцах';
+  const pct = Math.round(((index + 1) / questions.length) * 100);
   let html = `
-    <div class="back-btn" onclick="nav('home')">← ${esc(backLabel)}</div>
+    <div class="back-btn" onclick="nav('home')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      ${esc(backLabel)}
+    </div>
+    <div class="progress-header">
+      <div class="progress-header-bar"><div class="progress-header-fill" style="width:${pct}%"></div></div>
+      <div class="progress-header-text">${index + 1}/${questions.length}</div>
+    </div>
     <div class="card">
       <div class="q-header">
-        <span class="q-counter">${index + 1} / ${questions.length}</span>
-        <button class="q-bookmark" onclick="toggleBookmark('${q.question_id}')">${q.isBookmarked ? '★' : '☆'}</button>
+        <span class="q-counter">Асуулт ${index + 1}</span>
+        <button class="q-bookmark" onclick="toggleBookmark('${q.question_id}')" title="${q.isBookmarked ? 'Хасах' : 'Хадгалах'}">${q.isBookmarked ? '★' : '☆'}</button>
       </div>
       ${q.imageUrl ? `<img class="q-image" src="${q.imageUrl}" alt="Зураг" loading="lazy">` : ''}
       <div class="q-text">${esc(q.questionText)}</div>
       <div class="q-options" id="q-options">
-        ${q.options.map(o => `
-          <button class="q-option" data-key="${o.key}" onclick="answerPractice('${q.question_id}','${o.key}')">
+        ${q.options.map((o, oi) => `
+          <button class="q-option" data-key="${o.key}" onclick="answerPractice('${q.question_id}','${o.key}')" style="animation-delay:${oi * .05}s">
             <span class="key">${o.key}</span>
             <span>${esc(o.text)}</span>
           </button>`).join('')}
       </div>
       <div id="q-feedback"></div>
       <div class="q-nav">
-        <button class="btn btn-outline" ${index === 0 ? 'disabled' : ''} onclick="practiceNav(-1)">← Өмнөх</button>
-        <button class="btn btn-primary" ${index === questions.length - 1 ? 'disabled' : ''} onclick="practiceNav(1)">Дараах →</button>
+        <button class="btn btn-outline" ${index === 0 ? 'disabled' : ''} onclick="practiceNav(-1)">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          Өмнөх
+        </button>
+        <button class="btn btn-primary" ${index === questions.length - 1 ? 'disabled' : ''} onclick="practiceNav(1)">
+          Дараах
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
       </div>
     </div>`;
   $('#app').innerHTML = html;
@@ -250,7 +352,7 @@ async function answerPractice(qid, key) {
       if (k === key && !res.isCorrect) b.classList.add('wrong');
     });
     if (res.explanation) {
-      $('#q-feedback').innerHTML = `<div class="q-explanation">${esc(res.explanation)}</div>`;
+      $('#q-feedback').innerHTML = `<div class="q-explanation">💡 ${esc(res.explanation)}</div>`;
     }
     const q = practiceData.questions[practiceData.index];
     if (q) q._answered = true;
@@ -273,7 +375,7 @@ async function toggleBookmark(qid) {
     const q = practiceData.questions[practiceData.index];
     if (q) q.isBookmarked = res.isBookmarked;
     renderPracticeQuestion();
-    toast(res.isBookmarked ? 'Хадгалагдлаа' : 'Хасагдлаа');
+    toast(res.isBookmarked ? '⭐ Хадгалагдлаа' : 'Хасагдлаа');
   } catch (e) { toast(e.message); }
 }
 
@@ -284,12 +386,18 @@ async function renderExamMenu() {
       api('/me/limits'),
       api('/exam/active'),
     ]);
-    let html = '<h2 class="section-title">Шалгалт</h2>';
+    let html = `<h2 class="section-title">🎯 Шалгалт</h2>`;
 
     if (active.active) {
       html += `
-        <div class="card" style="border-left:3px solid var(--warning)">
-          <p style="font-weight:600;margin-bottom:8px">Дуусаагүй шалгалт байна</p>
+        <div class="card card-glow" style="border-left:4px solid var(--warning)">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--warning-light);display:flex;align-items:center;justify-content:center">⏳</div>
+            <div>
+              <div style="font-weight:700;font-size:.92rem">Дуусаагүй шалгалт</div>
+              <div style="font-size:.75rem;color:var(--text3)">Үргэлжлүүлж дуусгана уу</div>
+            </div>
+          </div>
           <button class="btn btn-primary btn-block" onclick="startExam()">Үргэлжлүүлэх</button>
         </div>`;
     }
@@ -297,9 +405,14 @@ async function renderExamMenu() {
     if (active.expiredAttempt) {
       html += `
         <div class="card">
-          <p style="font-weight:600;margin-bottom:4px">Сүүлийн шалгалтын хугацаа дууссан</p>
-          <p style="font-size:.85rem;color:var(--text3);margin-bottom:8px">Оноо: ${active.expiredAttempt.score}/${active.expiredAttempt.total} (${active.expiredAttempt.percent}%)</p>
-          <button class="btn btn-outline" onclick="nav('attempt-detail','${active.expiredAttempt.attempt_id}')">Дэлгэрэнгүй</button>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div style="width:36px;height:36px;border-radius:10px;background:var(--danger-light);display:flex;align-items:center;justify-content:center">⏰</div>
+            <div>
+              <div style="font-weight:700;font-size:.88rem">Хугацаа дууссан</div>
+              <div style="font-size:.78rem;color:var(--text3)">${active.expiredAttempt.score}/${active.expiredAttempt.total} (${active.expiredAttempt.percent}%)</div>
+            </div>
+          </div>
+          <button class="btn btn-outline btn-block btn-sm" onclick="nav('attempt-detail','${active.expiredAttempt.attempt_id}')">Дэлгэрэнгүй харах</button>
         </div>`;
     }
 
@@ -307,53 +420,68 @@ async function renderExamMenu() {
     const qLeft = limits.isPro ? '∞' : `${Math.max(0, limits.freeDailyQuestions - limits.questionsAnswered)}`;
     html += `
       <div class="stat-grid">
-        <div class="stat-card"><div class="stat-value">${examLeft}</div><div class="stat-label">Өнөөдрийн шалгалт</div></div>
-        <div class="stat-card"><div class="stat-value">${qLeft}</div><div class="stat-label">Өнөөдрийн асуулт</div></div>
+        <div class="stat-card" data-color="purple" style="animation-delay:.05s"><div class="stat-value">${examLeft}</div><div class="stat-label">Өнөөдрийн шалгалт</div></div>
+        <div class="stat-card" data-color="blue" style="animation-delay:.1s"><div class="stat-value">${qLeft}</div><div class="stat-label">Өнөөдрийн асуулт</div></div>
       </div>
-      <div class="card" style="position:relative;overflow:hidden">
-        <div style="position:absolute;top:0;right:0;width:80px;height:80px;background:linear-gradient(135deg,var(--primary-light),transparent);border-radius:0 0 0 80px;opacity:.5"></div>
-        <p style="font-weight:700;margin-bottom:4px;font-size:.95rem">Шинэ шалгалт эхлүүлэх</p>
-        <p style="font-size:.8rem;color:var(--text3);margin-bottom:14px;display:flex;gap:6px;flex-wrap:wrap">
-          <span style="background:var(--surface2);padding:2px 8px;border-radius:6px">20 асуулт</span>
-          <span style="background:var(--surface2);padding:2px 8px;border-radius:6px">25 минут</span>
-          <span style="background:var(--success-light);padding:2px 8px;border-radius:6px;color:var(--success)">≥75%</span>
-        </p>
-        <button class="btn btn-primary btn-block" onclick="startExam()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+
+      <div class="card card-gradient" style="position:relative;overflow:hidden">
+        <div style="position:absolute;top:-20px;right:-20px;width:100px;height:100px;border-radius:50%;background:var(--gradient-primary);opacity:.06;pointer-events:none"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px">
+          <div style="width:44px;height:44px;border-radius:14px;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:700;font-size:.95rem">Шинэ шалгалт</div>
+            <div style="display:flex;gap:6px;margin-top:4px">
+              <span style="background:var(--surface2);padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:600;color:var(--text3)">20 асуулт</span>
+              <span style="background:var(--surface2);padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:600;color:var(--text3)">25 мин</span>
+              <span style="background:var(--success-light);padding:2px 8px;border-radius:6px;font-size:.7rem;font-weight:700;color:var(--success)">≥75%</span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" onclick="startExam()">
           Эхлүүлэх
         </button>
       </div>`;
 
-    // Recent attempts
     const attempts = await api('/attempts?limit=5');
     if (attempts.length) {
-      html += '<h2 class="section-title" style="margin-top:16px">Сүүлийн шалгалтууд</h2>';
-      attempts.forEach(a => {
+      html += '<h2 class="section-title" style="margin-top:20px">📋 Сүүлийн шалгалтууд</h2>';
+      attempts.forEach((a, i) => {
         html += `
-          <div class="card" style="cursor:pointer" onclick="nav('attempt-detail','${a.attempt_id}')">
+          <div class="card" style="cursor:pointer;padding:14px 16px;animation-delay:${i * .05}s" onclick="nav('attempt-detail','${a.attempt_id}')">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <span class="badge ${a.passed ? 'badge-success' : 'badge-danger'}">${a.passed ? 'Тэнцсэн' : 'Тэнцээгүй'}</span>
-                <span style="font-size:.82rem;margin-left:8px">${a.score}/${a.total} (${a.percent}%)</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div style="width:32px;height:32px;border-radius:10px;background:${a.passed ? 'var(--success-light)' : 'var(--danger-light)'};display:flex;align-items:center;justify-content:center;font-size:.85rem">${a.passed ? '✓' : '✕'}</div>
+                <div>
+                  <span style="font-size:.85rem;font-weight:700">${a.score}/${a.total}</span>
+                  <span style="font-size:.78rem;color:var(--text3);margin-left:6px">${a.percent}%</span>
+                </div>
               </div>
-              <span style="font-size:.75rem;color:var(--text3)">${formatDate(a.finishedAt)}</span>
+              <span style="font-size:.72rem;color:var(--text3);font-weight:500">${formatDate(a.finishedAt)}</span>
             </div>
           </div>`;
       });
     }
 
-    // Quick links
     html += `
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <button class="btn btn-outline" style="flex:1" onclick="nav('bookmarks')">★ Хадгалсан</button>
-        <button class="btn btn-outline" style="flex:1" onclick="nav('wrong')">✕ Алдаатай</button>
+      <div class="divider-text" style="margin-top:20px">Бусад</div>
+      <div class="quick-actions">
+        <div class="quick-action" onclick="nav('bookmarks')" style="animation-delay:.05s">
+          <div class="quick-action-icon" style="background:var(--warning-light)">⭐</div>
+          <div class="quick-action-label">Хадгалсан</div>
+        </div>
+        <div class="quick-action" onclick="nav('wrong')" style="animation-delay:.1s">
+          <div class="quick-action-icon" style="background:var(--danger-light)">❌</div>
+          <div class="quick-action-label">Алдаатай</div>
+        </div>
       </div>`;
     if (!user?.isPro) {
-      html += `<button class="btn btn-primary btn-block" style="margin-top:12px" onclick="nav('pro')">PRO болох</button>`;
+      html += `<button class="btn btn-pro btn-block btn-lg" style="margin-top:8px" onclick="nav('pro')">👑 PRO болох</button>`;
     }
 
     $('#app').innerHTML = html;
-  } catch (e) { $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  } catch (e) { $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`; }
 }
 
 // ── Exam session ────────────────────────────────────────────
@@ -386,7 +514,10 @@ function startExamTimer() {
   examTimer = setInterval(() => {
     examState.remaining--;
     const timerEl = $('#exam-timer');
-    if (timerEl) timerEl.innerHTML = formatTime(examState.remaining);
+    if (timerEl) {
+      timerEl.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${formatTime(examState.remaining)}`;
+      timerEl.className = 'exam-timer ' + (examState.remaining > 300 ? 'ok' : '');
+    }
     if (examState.remaining <= 0) {
       clearInterval(examTimer);
       submitExam();
@@ -398,10 +529,22 @@ function renderExamQuestion() {
   const { questions, answers, index, remaining } = examState;
   const q = questions[index];
   const timerClass = remaining > 300 ? 'ok' : '';
+  const answeredCount = Object.keys(answers).length;
+  const pct = Math.round(((index + 1) / questions.length) * 100);
   let html = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <button class="btn btn-outline" style="padding:6px 12px;font-size:.8rem" onclick="confirmAbandon()">Болих</button>
-      <div class="exam-timer ${timerClass}" id="exam-timer">${formatTime(remaining)}</div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <button class="btn btn-outline btn-sm" onclick="confirmAbandon()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Болих
+      </button>
+      <div style="font-size:.75rem;color:var(--text3);font-weight:600">${answeredCount}/${questions.length} хариулсан</div>
+      <div class="exam-timer ${timerClass}" id="exam-timer">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+        ${formatTime(remaining)}
+      </div>
+    </div>
+    <div class="progress-header" style="margin-bottom:10px">
+      <div class="progress-header-bar"><div class="progress-header-fill" style="width:${pct}%"></div></div>
     </div>
     <div class="exam-progress-dots">
       ${questions.map((qq, i) => `
@@ -409,7 +552,7 @@ function renderExamQuestion() {
              onclick="examGo(${i})">${i + 1}</div>`).join('')}
     </div>
     <div class="card">
-      <div class="q-counter" style="margin-bottom:8px">${index + 1} / ${questions.length}</div>
+      <div class="q-counter" style="margin-bottom:10px">Асуулт ${index + 1} / ${questions.length}</div>
       ${q.imageUrl ? `<img class="q-image" src="${q.imageUrl}" alt="" loading="lazy">` : ''}
       <div class="q-text">${esc(q.questionText)}</div>
       <div class="q-options">
@@ -420,12 +563,16 @@ function renderExamQuestion() {
             <span>${esc(o.text)}</span>
           </button>`).join('')}
       </div>
-      <div class="q-nav" style="margin-top:16px">
-        <button class="btn btn-outline" ${index === 0 ? 'disabled' : ''} onclick="examGo(${index - 1})">←</button>
+      <div class="q-nav" style="margin-top:18px">
+        <button class="btn btn-outline" ${index === 0 ? 'disabled' : ''} onclick="examGo(${index - 1})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
         ${index === questions.length - 1
-          ? `<button class="btn btn-primary" style="flex:2" onclick="confirmSubmitExam()">Дуусгах</button>`
+          ? `<button class="btn btn-primary btn-lg" style="flex:2" onclick="confirmSubmitExam()">✓ Дуусгах</button>`
           : `<button class="btn btn-primary" style="flex:2" onclick="examGo(${index + 1})">Дараах →</button>`}
-        <button class="btn btn-outline" ${index === questions.length - 1 ? 'disabled' : ''} onclick="examGo(${index + 1})">→</button>
+        <button class="btn btn-outline" ${index === questions.length - 1 ? 'disabled' : ''} onclick="examGo(${index + 1})">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
       </div>
     </div>`;
   $('#app').innerHTML = html;
@@ -439,7 +586,7 @@ async function examAnswer(key) {
       method: 'POST',
       body: JSON.stringify({ session_id: examState.session_id, question_id: q.question_id, selectedKey: key }),
     });
-  } catch { /* autosave fail is not critical */ }
+  } catch {}
   renderExamQuestion();
 }
 
@@ -486,41 +633,50 @@ function renderExamResult(result) {
   if (!result) { nav('exam'); return; }
   const cls = result.passed ? 'pass' : 'fail';
   let html = `
-    <div class="card" style="text-align:center;padding:28px 20px;position:relative;overflow:hidden">
-      ${result.passed ? '<div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(16,185,129,.04),rgba(5,150,105,.08));pointer-events:none"></div>' : ''}
-      <div style="font-size:2.5rem;margin-bottom:12px">${result.passed ? '🎉' : '💪'}</div>
-      <div class="result-circle ${cls}" style="animation:scaleIn .5s ease">
+    <div class="card result-card ${cls}">
+      <div class="result-bg"></div>
+      <div class="result-emoji">${result.passed ? '🎉' : '💪'}</div>
+      <div class="result-circle ${cls}">
         <div class="score">${result.percent}%</div>
         <div class="label">${result.score}/${result.total}</div>
       </div>
-      <h2 style="margin-bottom:6px;font-weight:800">${result.passed ? 'Тэнцлээ!' : 'Тэнцсэнгүй'}</h2>
-      <p style="color:var(--text2);font-size:.88rem;margin-bottom:16px;line-height:1.5">
+      <div class="result-title">${result.passed ? 'Тэнцлээ!' : 'Тэнцсэнгүй'}</div>
+      <div class="result-desc">
         ${result.passed ? 'Баяр хүргэе! Та амжилттай тэнцлээ.' : `Тэнцэхэд ≥75% шаардлагатай. Та ${result.percent}% авлаа.`}
-      </p>
-      ${result.durationSeconds ? `<p style="font-size:.8rem;color:var(--text3);display:flex;align-items:center;justify-content:center;gap:4px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${Math.floor(result.durationSeconds / 60)} мин ${result.durationSeconds % 60} сек</p>` : ''}
+      </div>
+      ${result.durationSeconds ? `<div class="result-meta"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> ${Math.floor(result.durationSeconds / 60)} мин ${result.durationSeconds % 60} сек</div>` : ''}
     </div>`;
 
   if (result.detail) {
-    html += '<h2 class="section-title" style="margin-top:16px">Хариултууд</h2>';
+    const wrongCount = result.detail.filter(d => !d.isCorrect).length;
+    html += `
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <div class="stat-card" data-color="green" style="flex:1"><div class="stat-value">${result.score}</div><div class="stat-label">Зөв</div></div>
+        <div class="stat-card" data-color="red" style="flex:1"><div class="stat-value">${wrongCount}</div><div class="stat-label">Буруу</div></div>
+      </div>
+      <h2 class="section-title">📝 Хариултууд</h2>`;
     result.detail.forEach((d, i) => {
       html += `
-        <div class="review-item ${d.isCorrect ? 'correct-review' : 'wrong-review'}">
+        <div class="review-item ${d.isCorrect ? 'correct-review' : 'wrong-review'}" style="animation-delay:${i * .04}s">
           <div class="review-q">${i + 1}. ${esc(d.questionText)}</div>
           ${d.imageUrl ? `<img class="review-img" src="${d.imageUrl}" loading="lazy">` : ''}
           ${d.options.map(o => {
             let cls = '';
             if (o.key === d.correctKey) cls = 'correct';
             else if (o.key === d.selectedKey && !d.isCorrect) cls = 'wrong';
-            return `<div class="q-option ${cls}" style="margin-bottom:4px;cursor:default"><span class="key">${o.key}</span><span>${esc(o.text)}</span></div>`;
+            return `<div class="q-option ${cls}" style="margin-bottom:4px;cursor:default;pointer-events:none"><span class="key">${o.key}</span><span>${esc(o.text)}</span></div>`;
           }).join('')}
-          ${d.explanation ? `<div class="q-explanation">${esc(d.explanation)}</div>` : ''}
+          ${d.explanation ? `<div class="q-explanation">💡 ${esc(d.explanation)}</div>` : ''}
         </div>`;
     });
   }
 
   html += `
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button class="btn btn-outline" style="flex:1" onclick="nav('exam')">Буцах</button>
+    <div style="display:flex;gap:8px;margin-top:18px">
+      <button class="btn btn-outline" style="flex:1" onclick="nav('exam')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Буцах
+      </button>
       <button class="btn btn-primary" style="flex:1" onclick="startExam()">Дахин өгөх</button>
     </div>`;
   $('#app').innerHTML = html;
@@ -531,39 +687,39 @@ async function renderAttemptDetail(attemptId) {
   try {
     const a = await api(`/attempts/${attemptId}`);
     renderExamResult(a);
-  } catch (e) { $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  } catch (e) { $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`; }
 }
 
 // ── Bookmarks ───────────────────────────────────────────────
 async function renderBookmarks() {
   try {
     const qs = await api('/questions/bookmarked');
-    let html = '<div class="back-btn" onclick="nav(\'exam\')">← Буцах</div><h2 class="section-title">★ Хадгалсан асуултууд</h2>';
-    if (!qs.length) { html += '<div class="empty">Хадгалсан асуулт алга</div>'; }
-    else {
-      practiceData = { questions: qs, index: 0, catId: '' };
-      renderPracticeQuestion();
+    if (!qs.length) {
+      $('#app').innerHTML = `
+        <div class="back-btn" onclick="nav('exam')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Буцах</div>
+        <div class="empty"><div class="empty-icon">⭐</div><div class="empty-title">Хадгалсан асуулт алга</div>Асуулт дээрх ☆ товчийг дарж хадгалаарай</div>`;
       return;
     }
-    $('#app').innerHTML = html;
-  } catch (e) { $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+    practiceData = { questions: qs, index: 0, catId: '' };
+    renderPracticeQuestion();
+  } catch (e) { $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`; }
 }
 
 // ── Wrong questions ─────────────────────────────────────────
 async function renderWrong() {
   try {
     const qs = await api('/questions/wrong');
-    let html = '<div class="back-btn" onclick="nav(\'exam\')">← Буцах</div><h2 class="section-title">✕ Алдаатай асуултууд</h2>';
-    if (!qs.length) { html += '<div class="empty">Алдаатай асуулт алга</div>'; }
-    else {
-      practiceData = { questions: qs, index: 0, catId: '' };
-      renderPracticeQuestion();
+    if (!qs.length) {
+      $('#app').innerHTML = `
+        <div class="back-btn" onclick="nav('exam')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg> Буцах</div>
+        <div class="empty"><div class="empty-icon">✨</div><div class="empty-title">Алдаатай асуулт алга</div>Танд алдаа хийгээгүй байна</div>`;
       return;
     }
-    $('#app').innerHTML = html;
+    practiceData = { questions: qs, index: 0, catId: '' };
+    renderPracticeQuestion();
   } catch (e) {
     if (e.message.includes('PRO')) { nav('pro'); return; }
-    $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+    $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`;
   }
 }
 
@@ -571,41 +727,59 @@ async function renderWrong() {
 async function renderStats() {
   try {
     const s = await api('/stats');
+    const passRate = s.examsTaken ? Math.round((s.examsPassed / s.examsTaken) * 100) : 0;
     let html = `
       <h2 class="section-title">📊 Миний статистик</h2>
       <div class="stat-grid">
-        <div class="stat-card" style="animation-delay:.05s"><div class="stat-value">${s.totalAnswered}</div><div class="stat-label">Хариулсан</div></div>
-        <div class="stat-card" style="animation-delay:.1s"><div class="stat-value">${s.correctPercent}%</div><div class="stat-label">Зөв хариулт</div></div>
-        <div class="stat-card" style="animation-delay:.15s"><div class="stat-value">${s.examsTaken}</div><div class="stat-label">Шалгалт өгсөн</div></div>
-        <div class="stat-card" style="animation-delay:.2s"><div class="stat-value">${s.examsPassed}</div><div class="stat-label">Тэнцсэн</div></div>
-        <div class="stat-card" style="animation-delay:.25s"><div class="stat-value">${s.currentStreak}🔥</div><div class="stat-label">Дараалсан өдөр</div></div>
-        <div class="stat-card" style="animation-delay:.3s"><div class="stat-value">${s.bookmarks}</div><div class="stat-label">Хадгалсан</div></div>
+        <div class="stat-card" data-color="blue" style="animation-delay:.05s"><div class="stat-value">${s.totalAnswered}</div><div class="stat-label">Нийт хариулсан</div></div>
+        <div class="stat-card" data-color="green" style="animation-delay:.1s"><div class="stat-value">${s.correctPercent}%</div><div class="stat-label">Зөв хариулт</div></div>
+        <div class="stat-card" data-color="purple" style="animation-delay:.15s"><div class="stat-value">${s.examsTaken}</div><div class="stat-label">Шалгалт өгсөн</div></div>
+        <div class="stat-card" data-color="cyan" style="animation-delay:.2s"><div class="stat-value">${passRate}%</div><div class="stat-label">Тэнцсэн хувь</div></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <div class="card" style="flex:1;text-align:center;margin-bottom:0;padding:18px 12px">
+          <div style="font-size:2rem;margin-bottom:4px">${s.currentStreak > 0 ? '🔥' : '❄️'}</div>
+          <div style="font-size:1.4rem;font-weight:900;color:${s.currentStreak > 0 ? '#f97316' : 'var(--text3)'}">${s.currentStreak}</div>
+          <div style="font-size:.7rem;color:var(--text3);font-weight:600;margin-top:2px">Дараалсан өдөр</div>
+        </div>
+        <div class="card" style="flex:1;text-align:center;margin-bottom:0;padding:18px 12px">
+          <div style="font-size:2rem;margin-bottom:4px">⭐</div>
+          <div style="font-size:1.4rem;font-weight:900;color:var(--warning)">${s.bookmarks}</div>
+          <div style="font-size:.7rem;color:var(--text3);font-weight:600;margin-top:2px">Хадгалсан</div>
+        </div>
+        <div class="card" style="flex:1;text-align:center;margin-bottom:0;padding:18px 12px">
+          <div style="font-size:2rem;margin-bottom:4px">✅</div>
+          <div style="font-size:1.4rem;font-weight:900;color:var(--success)">${s.examsPassed}</div>
+          <div style="font-size:.7rem;color:var(--text3);font-weight:600;margin-top:2px">Тэнцсэн</div>
+        </div>
       </div>`;
 
     if (s.perCategory && s.perCategory.length) {
-      html += '<h2 class="section-title" style="margin-top:16px">Бүлгээр</h2>';
-      s.perCategory.forEach(c => {
+      html += '<h2 class="section-title" style="margin-top:8px">📚 Бүлгээр</h2>';
+      s.perCategory.forEach((c, i) => {
         const pct = c.questionCount ? Math.round((c.correct / c.questionCount) * 100) : 0;
+        const color = pct >= 80 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--text3)';
         html += `
-          <div class="card" style="padding:10px 14px">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
-              <span style="font-size:.82rem;font-weight:600">${esc(c.name)}</span>
-              <span style="font-size:.75rem;color:var(--text3)">${c.correct}/${c.questionCount}</span>
+          <div class="card" style="padding:12px 16px;animation-delay:${i * .03}s">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:.82rem;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</span>
+              <span style="font-size:.75rem;font-weight:700;color:${color};margin-left:8px">${pct}%</span>
             </div>
-            <div class="cat-progress"><div class="cat-progress-bar" style="width:${pct}%"></div></div>
+            <div class="cat-progress"><div class="cat-progress-bar" style="width:${pct}%;${pct >= 80 ? 'background:var(--gradient-success)' : pct < 50 ? 'background:var(--surface3)' : ''}"></div></div>
           </div>`;
       });
     }
 
     if (s.recentExams && s.recentExams.length) {
-      html += '<h2 class="section-title" style="margin-top:16px">Сүүлийн шалгалтууд</h2>';
-      s.recentExams.forEach(a => {
+      html += '<h2 class="section-title" style="margin-top:8px">📋 Сүүлийн шалгалтууд</h2>';
+      s.recentExams.forEach((a, i) => {
         html += `
-          <div class="card" style="padding:10px 14px;cursor:pointer" onclick="nav('attempt-detail','${a.attempt_id}')">
+          <div class="card" style="padding:12px 16px;cursor:pointer;animation-delay:${i * .04}s" onclick="nav('attempt-detail','${a.attempt_id}')">
             <div style="display:flex;justify-content:space-between;align-items:center">
-              <div>
-                <span class="badge ${a.passed ? 'badge-success' : 'badge-danger'}">${a.passed ? 'Тэнцсэн' : 'Тэнцээгүй'}</span>
-                <span style="font-size:.82rem;margin-left:6px">${a.score}/${a.total}</span>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div style="width:28px;height:28px;border-radius:8px;background:${a.passed ? 'var(--success-light)' : 'var(--danger-light)'};display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:800;color:${a.passed ? 'var(--success)' : 'var(--danger)'}">${a.passed ? '✓' : '✕'}</div>
+                <span style="font-size:.85rem;font-weight:700">${a.score}/${a.total}</span>
               </div>
               <span style="font-size:.72rem;color:var(--text3)">${formatDate(a.finishedAt)}</span>
             </div>
@@ -614,7 +788,7 @@ async function renderStats() {
     }
 
     $('#app').innerHTML = html;
-  } catch (e) { $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  } catch (e) { $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`; }
 }
 
 // ── Profile ─────────────────────────────────────────────────
@@ -624,30 +798,46 @@ async function renderProfile() {
   const name = user?.profileName || '';
   let html = `
     <div class="card profile-section" style="position:relative;overflow:hidden">
-      <div style="position:absolute;top:0;left:0;right:0;height:60px;background:var(--gradient-primary);opacity:.08"></div>
-      ${pic ? `<img class="profile-avatar" src="${esc(pic)}" alt="">` : '<div class="profile-avatar" style="background:var(--primary-light);display:flex;align-items:center;justify-content:center;font-size:1.8rem">👤</div>'}
-      <h3 style="font-weight:800;font-size:1.1rem">${esc(user?.name || 'Хэрэглэгч')}</h3>
+      <div class="profile-header-bg"></div>
+      ${pic ? `<img class="profile-avatar" src="${esc(pic)}" alt="">` : '<div class="profile-avatar" style="background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;font-size:2rem;color:#fff">👤</div>'}
+      <div class="profile-name">${esc(user?.name || 'Хэрэглэгч')}</div>
       <p class="profile-email">${esc(email)}</p>
-      ${user?.isPro ? '<div style="margin-top:10px"><span class="badge badge-pro" style="padding:4px 12px">PRO</span></div>' : ''}
+      <div class="profile-badges">
+        ${user?.isPro ? '<span class="badge badge-pro" style="padding:5px 14px">PRO</span>' : '<span class="badge badge-free">FREE</span>'}
+      </div>
     </div>
+
     <div class="card">
-      <h3 style="font-size:.92rem;margin-bottom:6px;font-weight:700">Профайл нэр</h3>
-      <p style="font-size:.76rem;color:var(--text3);margin-bottom:10px;font-weight:500">3-20 тэмдэгт, латин үсэг/тоо/доогуур зураас</p>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <div style="width:36px;height:36px;border-radius:10px;background:var(--primary-light);display:flex;align-items:center;justify-content:center">✏️</div>
+        <div>
+          <div style="font-weight:700;font-size:.92rem">Профайл нэр</div>
+          <div style="font-size:.72rem;color:var(--text3)">3-20 тэмдэгт, латин үсэг/тоо</div>
+        </div>
+      </div>
       <input class="profile-name-input" id="pname" value="${esc(name)}" placeholder="profile_name" maxlength="20">
       <div id="pname-status" style="font-size:.78rem;margin-top:6px;font-weight:600"></div>
       <button class="btn btn-primary btn-block" style="margin-top:10px" onclick="saveName()">Хадгалах</button>
     </div>`;
+
   if (!user?.isPro) {
     html += `
-      <div class="card" style="text-align:center;position:relative;overflow:hidden">
-        <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,158,11,.05),rgba(239,68,68,.05));pointer-events:none"></div>
+      <div class="card" style="text-align:center;position:relative;overflow:hidden;cursor:pointer" onclick="nav('pro')">
+        <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(239,68,68,.06));pointer-events:none"></div>
+        <div class="pro-crown">👑</div>
         <span class="badge badge-pro" style="margin-bottom:10px">PRO</span>
-        <p style="font-weight:700;margin-bottom:10px">Бүх боломжийг нээгээрэй</p>
-        <button class="btn btn-primary" onclick="nav('pro')">PRO болох</button>
+        <p style="font-weight:700;margin-bottom:4px">Бүх боломжийг нээгээрэй</p>
+        <p style="font-size:.78rem;color:var(--text3);margin-bottom:14px">36 бүлэг, хязгааргүй шалгалт</p>
+        <button class="btn btn-pro btn-block">PRO болох</button>
       </div>`;
   }
+
   html += `<div id="profile-download" style="margin-top:16px"></div>`;
-  html += `<button class="btn btn-danger btn-block" style="margin-top:12px" onclick="logout()">Гарах</button>`;
+  html += `
+    <button class="btn btn-danger btn-block" style="margin-top:12px" onclick="logout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Гарах
+    </button>`;
   $('#app').innerHTML = html;
   checkApkAvailable('profile-download');
 
@@ -662,9 +852,9 @@ async function renderProfile() {
         const r = await api(`/profile/check-name?name=${encodeURIComponent(v)}`);
         const el = $('#pname-status');
         if (!el) return;
-        if (!r.valid) { el.textContent = r.reason; el.style.color = 'var(--danger)'; }
-        else if (!r.available) { el.textContent = r.reason; el.style.color = 'var(--danger)'; }
-        else { el.textContent = 'Боломжтой!'; el.style.color = 'var(--success)'; }
+        if (!r.valid) { el.textContent = '✕ ' + r.reason; el.style.color = 'var(--danger)'; }
+        else if (!r.available) { el.textContent = '✕ ' + r.reason; el.style.color = 'var(--danger)'; }
+        else { el.textContent = '✓ Боломжтой!'; el.style.color = 'var(--success)'; }
       } catch {}
     }, 400);
   });
@@ -679,7 +869,7 @@ async function saveName() {
       body: JSON.stringify({ name }),
     });
     renderHeader();
-    toast('Хадгалагдлаа!');
+    toast('✓ Хадгалагдлаа!');
   } catch (e) { toast(e.message); }
 }
 
@@ -687,43 +877,57 @@ async function saveName() {
 async function renderPro() {
   if (user?.isPro) {
     $('#app').innerHTML = `
-      <div class="card" style="text-align:center;padding:32px 20px;position:relative;overflow:hidden">
+      <div class="card" style="text-align:center;padding:36px 24px;position:relative;overflow:hidden">
         <div style="position:absolute;inset:0;background:linear-gradient(135deg,rgba(245,158,11,.06),rgba(239,68,68,.06));pointer-events:none"></div>
-        <div style="font-size:3rem;margin-bottom:12px">👑</div>
-        <span class="badge badge-pro" style="font-size:.85rem;padding:5px 16px;margin-bottom:12px">PRO</span>
-        <h2 style="font-weight:800;margin-top:12px">Та PRO хэрэглэгч!</h2>
-        <p style="color:var(--text2);margin-top:8px;line-height:1.5">Бүх бүлэг, бүх боломж танд нээлттэй.</p>
-        <button class="btn btn-primary" style="margin-top:20px" onclick="nav('home')">Нүүр хуудас</button>
+        <div class="pro-crown">👑</div>
+        <span class="badge badge-pro" style="font-size:.85rem;padding:6px 18px;margin-bottom:14px">PRO ХЭРЭГЛЭГЧ</span>
+        <h2 style="font-weight:900;margin-top:12px;font-size:1.3rem">Та PRO хэрэглэгч!</h2>
+        <p style="color:var(--text2);margin-top:8px;line-height:1.6;font-size:.88rem">Бүх бүлэг, бүх боломж танд нээлттэй.</p>
+        <button class="btn btn-primary btn-lg" style="margin-top:24px" onclick="nav('home')">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+          Нүүр хуудас
+        </button>
       </div>`;
     return;
   }
   try {
     const plan = await api('/payments/plan');
     let html = `
-      <div class="back-btn" onclick="nav('home')">← Буцах</div>
+      <div class="back-btn" onclick="nav('home')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        Буцах
+      </div>
       <div class="card pro-hero">
-        <span class="badge badge-pro" style="font-size:.9rem;padding:4px 14px">PRO</span>
-        <h2 style="margin-top:12px">Бүх боломжийг нээгээрэй</h2>
+        <div class="pro-crown">👑</div>
+        <span class="badge badge-pro" style="font-size:.9rem;padding:5px 16px">PRO</span>
+        <h2 style="margin-top:14px;font-size:1.3rem">Бүх боломжийг нээгээрэй</h2>
         <div class="pro-price">${plan.amount?.toLocaleString()}₮</div>
-        <p style="color:var(--text3);font-size:.85rem">Нэг удаагийн төлбөр</p>
+        <div class="pro-price-sub">Нэг удаагийн төлбөр · Хязгааргүй хугацаа</div>
       </div>
       <div class="card">
         <ul class="pro-features">
-          <li>Бүх бүлгийн асуултууд</li>
+          <li>Бүх 36 бүлгийн асуултууд</li>
           <li>Хязгааргүй өдрийн асуулт</li>
-          <li>Хязгааргүй шалгалт</li>
-          <li>Алдаатай асуултын горим</li>
+          <li>Хязгааргүй шалгалт өгөх</li>
+          <li>Алдаатай асуултын давтлага</li>
+          <li>Дэлгэрэнгүй статистик</li>
           <li>Бүх шинэчлэлт үнэгүй</li>
         </ul>
       </div>`;
     if (plan.qpay) {
-      html += `<button class="btn btn-primary btn-block" style="margin-bottom:8px" onclick="createQPayPayment()">QPay-ээр төлөх</button>`;
+      html += `<button class="btn btn-pro btn-block btn-lg" style="margin-bottom:10px" onclick="createQPayPayment()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        QPay-ээр төлөх
+      </button>`;
     }
     if (plan.bankTransfer) {
-      html += `<button class="btn btn-outline btn-block" onclick="createBankPayment()">Дансаар шилжүүлэх</button>`;
+      html += `<button class="btn btn-outline btn-block btn-lg" onclick="createBankPayment()">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11"/></svg>
+        Дансаар шилжүүлэх
+      </button>`;
     }
     $('#app').innerHTML = html;
-  } catch (e) { $('#app').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+  } catch (e) { $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div>${esc(e.message)}</div>`; }
 }
 
 async function createQPayPayment() {
@@ -746,18 +950,18 @@ function showQPayModal(p) {
   overlay.onclick = e => { if (e.target === overlay) overlay.remove(); };
   let bankApps = '';
   if (p.urls && p.urls.length) {
-    bankApps = '<div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px">' +
-      p.urls.map(u => `<a href="${esc(u.link)}" target="_blank" class="btn btn-outline" style="font-size:.78rem;padding:6px 10px">${esc(u.description || u.name)}</a>`).join('') +
+    bankApps = '<div style="margin-top:14px;display:flex;flex-wrap:wrap;gap:6px">' +
+      p.urls.map(u => `<a href="${esc(u.link)}" target="_blank" class="btn btn-outline btn-sm">${esc(u.description || u.name)}</a>`).join('') +
       '</div>';
   }
   overlay.innerHTML = `
     <div class="modal">
       <h3>QPay төлбөр</h3>
-      ${p.qr_image ? `<img src="data:image/png;base64,${p.qr_image}" style="width:200px;margin:0 auto;display:block;border-radius:8px" alt="QR">` : ''}
-      ${p.short_url ? `<p style="text-align:center;margin-top:8px"><a href="${esc(p.short_url)}" target="_blank">Холбоос нээх</a></p>` : ''}
+      ${p.qr_image ? `<img src="data:image/png;base64,${p.qr_image}" style="width:200px;margin:0 auto;display:block;border-radius:12px;box-shadow:var(--shadow-md)" alt="QR">` : ''}
+      ${p.short_url ? `<p style="text-align:center;margin-top:10px"><a href="${esc(p.short_url)}" target="_blank" class="btn btn-outline btn-sm">Холбоос нээх</a></p>` : ''}
       ${bankApps}
-      <p style="font-size:.8rem;color:var(--text3);margin-top:12px;text-align:center">Төлбөр хийсний дараа доорх товчийг дарна уу</p>
-      <button class="btn btn-primary btn-block" style="margin-top:8px" onclick="checkPayment('${p.payment_id}',this)">Төлбөр шалгах</button>
+      <p style="font-size:.8rem;color:var(--text3);margin-top:14px;text-align:center">Төлбөр хийсний дараа доорх товчийг дарна уу</p>
+      <button class="btn btn-primary btn-block" style="margin-top:10px" onclick="checkPayment('${p.payment_id}',this)">Төлбөр шалгах</button>
       <button class="btn btn-outline btn-block" style="margin-top:8px" onclick="this.closest('.modal-overlay').remove()">Хаах</button>
     </div>`;
   document.body.appendChild(overlay);
@@ -772,7 +976,7 @@ async function checkPayment(paymentId, btn) {
       user.isPro = true;
       renderHeader();
       document.querySelector('.modal-overlay')?.remove();
-      toast('Та PRO боллоо! 🎉');
+      toast('🎉 Та PRO боллоо!');
       nav('home');
     } else {
       btn.textContent = 'Төлбөр илрээгүй. Дахин шалгах';
@@ -796,23 +1000,30 @@ async function renderBankPay(data) {
   if (!data) { nav('pro'); return; }
   const b = data.bank || {};
   let html = `
-    <div class="back-btn" onclick="nav('pro')">← Буцах</div>
+    <div class="back-btn" onclick="nav('pro')">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+      Буцах
+    </div>
     <div class="card">
-      <h3 style="margin-bottom:12px">Дансаар шилжүүлэх</h3>
-      <div class="bank-info">
-        <div class="bank-row"><span class="label">Банк:</span><span class="value">${esc(b.bankName)}</span></div>
-        <div class="bank-row"><span class="label">Данс:</span><span class="value">${esc(b.accountNumber)}</span> <span class="copy-btn" onclick="copyText('${esc(b.accountNumber)}')">Хуулах</span></div>
-        <div class="bank-row"><span class="label">Нэр:</span><span class="value">${esc(b.accountName)}</span></div>
-        ${b.iban ? `<div class="bank-row"><span class="label">IBAN:</span><span class="value">${esc(b.iban)}</span> <span class="copy-btn" onclick="copyText('${esc(b.iban)}')">Хуулах</span></div>` : ''}
-        <div class="bank-row"><span class="label">Дүн:</span><span class="value">${b.amount?.toLocaleString()}₮</span></div>
-        <div class="bank-row"><span class="label">Гүйлгээний утга:</span><span class="value" style="color:var(--primary)">${esc(data.ref)}</span> <span class="copy-btn" onclick="copyText('${esc(data.ref)}')">Хуулах</span></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <div style="width:40px;height:40px;border-radius:12px;background:var(--primary-light);display:flex;align-items:center;justify-content:center">🏦</div>
+        <h3 style="margin-bottom:0;font-size:1rem">Дансаар шилжүүлэх</h3>
       </div>
-      ${b.qrUrl ? `<div style="text-align:center;margin-top:12px"><img src="${b.qrUrl}" style="max-width:200px;border-radius:8px" alt="QR"></div>` : ''}
-      <div style="background:var(--warning-light);padding:10px;border-radius:8px;margin-top:12px;font-size:.82rem;line-height:1.5">
-        <strong>Анхаар:</strong> Гүйлгээний утга дээр <code>${esc(data.ref)}</code> кодыг заавал бичнэ үү.
+      <div class="bank-info">
+        <div class="bank-row"><span class="label">Банк</span><span class="value">${esc(b.bankName)}</span></div>
+        <div class="bank-row"><span class="label">Данс</span><span class="value">${esc(b.accountNumber)}</span> <span class="copy-btn" onclick="copyText('${esc(b.accountNumber)}')">Хуулах</span></div>
+        <div class="bank-row"><span class="label">Нэр</span><span class="value">${esc(b.accountName)}</span></div>
+        ${b.iban ? `<div class="bank-row"><span class="label">IBAN</span><span class="value">${esc(b.iban)}</span> <span class="copy-btn" onclick="copyText('${esc(b.iban)}')">Хуулах</span></div>` : ''}
+        <div class="bank-row"><span class="label">Дүн</span><span class="value" style="font-size:1rem;color:var(--primary)">${b.amount?.toLocaleString()}₮</span></div>
+        <div class="bank-row"><span class="label">Гүйлгээний утга</span><span class="value" style="color:var(--primary);font-size:.95rem">${esc(data.ref)}</span> <span class="copy-btn" onclick="copyText('${esc(data.ref)}')">Хуулах</span></div>
+      </div>
+      ${b.qrUrl ? `<div style="text-align:center;margin-top:14px"><img src="${b.qrUrl}" style="max-width:200px;border-radius:12px;box-shadow:var(--shadow-md)" alt="QR"></div>` : ''}
+      <div style="background:var(--warning-light);padding:12px 14px;border-radius:var(--radius-xs);margin-top:14px;font-size:.82rem;line-height:1.6;display:flex;gap:8px;align-items:flex-start">
+        <span style="font-size:1rem">⚠️</span>
+        <span>Гүйлгээний утга дээр <strong style="color:var(--primary)">${esc(data.ref)}</strong> кодыг заавал бичнэ үү.</span>
       </div>
     </div>
-    <button class="btn btn-primary btn-block" onclick="claimBankPayment('${data.payment_id}')" id="claim-btn">Шилжүүлсэн гэж мэдэгдэх</button>
+    <button class="btn btn-primary btn-block btn-lg" onclick="claimBankPayment('${data.payment_id}')" id="claim-btn">Шилжүүлсэн гэж мэдэгдэх</button>
     <p style="font-size:.78rem;color:var(--text3);margin-top:8px;text-align:center">Админ баталгаажуулсны дараа PRO идэвхжинэ</p>`;
   $('#app').innerHTML = html;
 }
@@ -823,8 +1034,10 @@ async function claimBankPayment(paymentId) {
   btn.textContent = 'Илгээж байна...';
   try {
     await api(`/payments/bank/${paymentId}/claim`, { method: 'POST' });
-    toast('Мэдэгдэл илгээгдлээ. Админ баталгаажуулахыг хүлээнэ үү.');
-    btn.textContent = 'Илгээгдсэн ✓';
+    toast('✓ Мэдэгдэл илгээгдлээ');
+    btn.textContent = '✓ Илгээгдсэн';
+    btn.classList.remove('btn-primary');
+    btn.classList.add('btn-success');
   } catch (e) {
     toast(e.message);
     btn.disabled = false;
@@ -867,11 +1080,12 @@ function formatTime(sec) {
 function formatDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
+  const months = ['1-р сар','2-р сар','3-р сар','4-р сар','5-р сар','6-р сар','7-р сар','8-р сар','9-р сар','10-р сар','11-р сар','12-р сар'];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getHours()}:${d.getMinutes().toString().padStart(2, '0')}`;
 }
 
 function copyText(text) {
-  navigator.clipboard.writeText(text).then(() => toast('Хуулагдлаа!')).catch(() => {});
+  navigator.clipboard.writeText(text).then(() => toast('✓ Хуулагдлаа!')).catch(() => {});
 }
 
 // ── Theme toggle ───────────────────────────────────────────
@@ -887,10 +1101,10 @@ function toggleTheme() {
 }
 
 function updateThemeIcon() {
-  const btn = $('#theme-toggle');
-  if (!btn) return;
-  const theme = document.documentElement.getAttribute('data-theme');
-  btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+  document.querySelectorAll('.theme-toggle, #login-theme-toggle').forEach(btn => {
+    const theme = document.documentElement.getAttribute('data-theme');
+    btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+  });
 }
 
 function initTheme() {
@@ -904,7 +1118,6 @@ function initTheme() {
 }
 
 // ── Header scroll effect ────────────────────────────────────
-let lastScroll = 0;
 window.addEventListener('scroll', () => {
   const header = $('#app-header');
   if (!header) return;
