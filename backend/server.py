@@ -104,7 +104,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
         response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
-        response.headers["Cache-Control"] = "no-store"
+        # `no-store` by default, because almost everything here is per-user data.
+        # An endpoint that serves public, immutable content (the question images)
+        # sets its own Cache-Control and keeps it.
+        response.headers.setdefault("Cache-Control", "no-store")
         return response
 
 
