@@ -897,6 +897,15 @@ async def get_stats(authorization: Optional[str] = Header(None)):
         current_streak += 1
         cursor = cursor - timedelta(days=1)
 
+    # Last 7 days of activity for the weekly bar chart.
+    seven_ago = (datetime.now(MN_TZ) - timedelta(days=6)).strftime("%Y-%m-%d")
+    recent_usage = [d for d in usage_docs if d.get("date", "") >= seven_ago]
+    daily_map = {d["date"]: d.get("questionsAnswered", 0) for d in recent_usage}
+    daily_activity = []
+    for i in range(7):
+        day = (datetime.now(MN_TZ) - timedelta(days=6 - i)).strftime("%Y-%m-%d")
+        daily_activity.append({"date": day, "questionsAnswered": daily_map.get(day, 0)})
+
     return {
         "totalAnswered": total_answered,
         "correct": correct,
@@ -908,12 +917,123 @@ async def get_stats(authorization: Optional[str] = Header(None)):
         "currentStreak": current_streak,
         "studyDays": len(active_days),
         "perCategory": cat_stats,
+        "dailyActivity": daily_activity,
         "recentExams": [
             {"attempt_id": a["attempt_id"], "score": a["score"], "total": a["total"],
              "percent": a["percent"], "passed": a["passed"], "finishedAt": a["finishedAt"],
              "category_name": a.get("category_name")}
             for a in attempts
         ],
+    }
+
+
+# ============================ Achievements ============================
+LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000]
+XP_PER_CORRECT = 10
+XP_PER_EXAM_PASS = 50
+
+
+def compute_level(xp: int):
+    level = 0
+    for i, t in enumerate(LEVEL_THRESHOLDS):
+        if xp >= t:
+            level = i + 1
+    floor = LEVEL_THRESHOLDS[level - 1] if level > 0 else 0
+    next_xp = LEVEL_THRESHOLDS[level] if level < len(LEVEL_THRESHOLDS) else None
+    return level, floor, next_xp
+
+
+@api_router.get("/achievements")
+async def get_achievements(authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    uid = user["user_id"]
+
+    prog = await db.userProgress.find({"user_id": uid}, {"_id": 0}).to_list(100000)
+    answered = [p for p in prog if "isCorrect" in p]
+    correct_count = sum(1 for p in answered if p.get("isCorrect"))
+    bookmarks = sum(1 for p in prog if p.get("isBookmarked"))
+
+    exams_taken = await db.attempts.count_documents({"user_id": uid})
+    exams_passed = await db.attempts.count_documents({"user_id": uid, "passed": True})
+
+    # Mastered categories: >=90% correct out of total questions
+    cats = await db.categories.find({}, {"_id": 0}).to_list(1000)
+    q_all = await db.questions.find({}, {"_id": 0, "question_id": 1, "category_id": 1}).to_list(100000)
+    qcat = {q["question_id"]: q["category_id"] for q in q_all}
+    per_cat: dict = {}
+    for p in answered:
+        cid = qcat.get(p["question_id"])
+        if cid:
+            per_cat.setdefault(cid, {"correct": 0, "total": 0})
+            per_cat[cid]["total"] += 1
+            if p.get("isCorrect"):
+                per_cat[cid]["correct"] += 1
+    cat_totals = {c["category_id"]: c["questionCount"] for c in cats}
+    mastered = 0
+    for cid, s in per_cat.items():
+        total = cat_totals.get(cid, 0)
+        if total and s["correct"] >= total * 0.9:
+            mastered += 1
+
+    # Best streak
+    usage_docs = await db.dailyUsage.find(
+        {"user_id": uid}, {"_id": 0, "date": 1, "questionsAnswered": 1, "examsTaken": 1}
+    ).to_list(100000)
+    active_days = sorted(
+        {d["date"] for d in usage_docs if (d.get("questionsAnswered", 0) or d.get("examsTaken", 0))}
+    )
+    best_streak = 0
+    streak = 0
+    prev = None
+    for day_str in active_days:
+        try:
+            day = datetime.strptime(day_str, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if prev and (day - prev).days == 1:
+            streak += 1
+        else:
+            streak = 1
+        if streak > best_streak:
+            best_streak = streak
+        prev = day
+
+    xp = correct_count * XP_PER_CORRECT + exams_passed * XP_PER_EXAM_PASS
+    level, level_floor, next_level_xp = compute_level(xp)
+
+    # Badges
+    badges = [
+        {"key": "first_answer", "label": "Эхний алхам", "description": "Анхны асуултыг хариулах",
+         "icon": "flag", "value": min(len(answered), 1), "goal": 1, "earned": len(answered) >= 1},
+        {"key": "fifty_correct", "label": "50 зөв", "description": "50 асуулт зөв хариулах",
+         "icon": "checkmark-done", "value": min(correct_count, 50), "goal": 50, "earned": correct_count >= 50},
+        {"key": "hundred_correct", "label": "100 зөв", "description": "100 асуулт зөв хариулах",
+         "icon": "medal", "value": min(correct_count, 100), "goal": 100, "earned": correct_count >= 100},
+        {"key": "five_hundred_correct", "label": "500 зөв", "description": "500 асуулт зөв хариулах",
+         "icon": "trophy", "value": min(correct_count, 500), "goal": 500, "earned": correct_count >= 500},
+        {"key": "first_exam", "label": "Анхны шалгалт", "description": "Эхний шалгалтаа өгөх",
+         "icon": "school", "value": min(exams_taken, 1), "goal": 1, "earned": exams_taken >= 1},
+        {"key": "five_exams_passed", "label": "5 тэнцсэн", "description": "5 шалгалтанд тэнцэх",
+         "icon": "ribbon", "value": min(exams_passed, 5), "goal": 5, "earned": exams_passed >= 5},
+        {"key": "streak_7", "label": "7 хоног", "description": "7 өдөр дараалан суралцах",
+         "icon": "flame", "value": min(best_streak, 7), "goal": 7, "earned": best_streak >= 7},
+        {"key": "streak_30", "label": "30 хоног", "description": "30 өдөр дараалан суралцах",
+         "icon": "flame", "value": min(best_streak, 30), "goal": 30, "earned": best_streak >= 30},
+        {"key": "bookworm", "label": "Номын хорхой", "description": "10 асуулт хадгалах",
+         "icon": "bookmark", "value": min(bookmarks, 10), "goal": 10, "earned": bookmarks >= 10},
+        {"key": "master_cat", "label": "Бүлэг эзэмшигч", "description": "1 бүлгийг 90%+ зөв хариулах",
+         "icon": "star", "value": min(mastered, 1), "goal": 1, "earned": mastered >= 1},
+    ]
+
+    return {
+        "xp": xp,
+        "level": level,
+        "levelFloor": level_floor,
+        "nextLevelXp": next_level_xp,
+        "bestStreak": best_streak,
+        "mastered": mastered,
+        "examsPassed": exams_passed,
+        "badges": badges,
     }
 
 
