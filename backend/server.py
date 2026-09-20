@@ -927,6 +927,90 @@ async def get_stats(authorization: Optional[str] = Header(None)):
     }
 
 
+# ============================ Friends / Leaderboard ============================
+class FriendAction(BaseModel):
+    profileName: str
+
+
+@api_router.get("/friends")
+async def get_friends(authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    uid = user["user_id"]
+
+    # The friend list is stored as an array of profile names on the user doc.
+    friend_names = user.get("friends") or []
+
+    # Always include the current user themselves.
+    friend_filter = {"profileNameLower": {"$in": [n.lower() for n in friend_names]}} if friend_names else {"user_id": "__none__"}
+    friends = await db.users.find(friend_filter, {"_id": 0}).to_list(200)
+    all_users = friends + [user]
+
+    # Deduplicate (the user might have added themselves).
+    seen = set()
+    unique = []
+    for u in all_users:
+        if u["user_id"] not in seen:
+            seen.add(u["user_id"])
+            unique.append(u)
+
+    days = 7
+    cutoff = (datetime.now(MN_TZ) - timedelta(days=days - 1)).strftime("%Y-%m-%d")
+    entries = []
+    for u in unique:
+        usage = await db.dailyUsage.find(
+            {"user_id": u["user_id"], "date": {"$gte": cutoff}},
+            {"_id": 0},
+        ).to_list(days)
+        week_answered = sum(d.get("questionsAnswered", 0) for d in usage)
+        week_exams = sum(d.get("examsTaken", 0) for d in usage)
+        active_days = sum(1 for d in usage if d.get("questionsAnswered", 0) or d.get("examsTaken", 0))
+        entries.append({
+            "user_id": u["user_id"],
+            "profileName": u.get("profileName") or u.get("name") or u["user_id"],
+            "isPro": bool(u.get("isPro")),
+            "isMe": u["user_id"] == uid,
+            "weekAnswered": week_answered,
+            "weekExams": week_exams,
+            "activeDays": active_days,
+            "bestStreak": 0,
+        })
+
+    entries.sort(key=lambda e: e["weekAnswered"], reverse=True)
+    for i, e in enumerate(entries):
+        e["rank"] = i + 1
+
+    return {"entries": entries, "days": days}
+
+
+@api_router.post("/friends/add")
+async def add_friend(body: FriendAction, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    pname = body.profileName.strip()
+    if not pname:
+        raise HTTPException(status_code=400, detail="Профайл нэр хоосон байна")
+    target = await db.users.find_one({"profileNameLower": pname.lower()})
+    if not target:
+        raise HTTPException(status_code=404, detail="Хэрэглэгч олдсонгүй")
+    if target["user_id"] == user["user_id"]:
+        raise HTTPException(status_code=400, detail="Өөрийгөө нэмэх боломжгүй")
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$addToSet": {"friends": target["profileName"]}},
+    )
+    return {"ok": True}
+
+
+@api_router.post("/friends/remove")
+async def remove_friend(body: FriendAction, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    pname = body.profileName.strip()
+    await db.users.update_one(
+        {"user_id": user["user_id"]},
+        {"$pull": {"friends": {"$regex": f"^{re.escape(pname)}$", "$options": "i"}}},
+    )
+    return {"ok": True}
+
+
 # ============================ Achievements ============================
 LEVEL_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500, 7500, 10000]
 XP_PER_CORRECT = 10
@@ -1050,6 +1134,42 @@ async def me_limits(authorization: Optional[str] = Header(None)):
         "freeDailyExams": FREE_DAILY_EXAMS,
         "freeCategoryLimit": FREE_CATEGORY_LIMIT,
     }
+
+
+# ============================ Stub endpoints (used by frontend) ============================
+@api_router.get("/categories/{category_id}/preview")
+async def category_preview(category_id: str, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    qs = await db.questions.find({"category_id": category_id}, {"_id": 0}).to_list(5)
+    return {"questions": [q_public(q, include_answer=False) for q in qs[:3]]}
+
+
+@api_router.post("/pro/trial")
+async def pro_trial(authorization: Optional[str] = Header(None)):
+    """Placeholder — no trial feature yet."""
+    raise HTTPException(status_code=404, detail="Туршилтын хувилбар одоогоор байхгүй")
+
+
+@api_router.post("/streak/freeze")
+async def streak_freeze(authorization: Optional[str] = Header(None)):
+    """Placeholder — streak freeze not implemented yet."""
+    return {"ok": False, "message": "Streak freeze одоогоор байхгүй"}
+
+
+class NoteBody(BaseModel):
+    note: str = ""
+    tags: List[str] = []
+
+
+@api_router.post("/questions/{question_id}/note")
+async def save_question_note(question_id: str, body: NoteBody, authorization: Optional[str] = Header(None)):
+    user = await get_current_user(authorization)
+    await db.userProgress.update_one(
+        {"user_id": user["user_id"], "question_id": question_id},
+        {"$set": {"note": body.note, "tags": body.tags}},
+        upsert=True,
+    )
+    return {"ok": True}
 
 
 # ============================ Payments ============================
