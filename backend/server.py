@@ -1,6 +1,6 @@
 from fastapi import FastAPI, APIRouter, Header, HTTPException, Request, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -1465,22 +1465,21 @@ app.include_router(api_router)
 if IMAGES_DIR.exists():
     app.mount("/api/images", StaticFiles(directory=str(IMAGES_DIR)), name="images")
 
-DOWNLOADS_DIR = ROOT_DIR / "downloads"
-if DOWNLOADS_DIR.exists():
-    @app.get("/api/download/app")
-    async def download_apk():
-        apk_files = sorted(DOWNLOADS_DIR.glob("*.apk"), key=lambda f: f.stat().st_mtime, reverse=True)
-        if not apk_files:
-            raise HTTPException(404, "APK файл олдсонгүй")
-        return FileResponse(apk_files[0], filename=apk_files[0].name, media_type="application/vnd.android.package-archive")
+APK_DOWNLOAD_URL = os.environ.get("APK_DOWNLOAD_URL", "")
+APK_FILENAME = os.environ.get("APK_FILENAME", "joloo.apk")
+APK_SIZE = os.environ.get("APK_SIZE", "")
 
-    @app.get("/api/download/check")
-    async def check_apk():
-        apk_files = sorted(DOWNLOADS_DIR.glob("*.apk"), key=lambda f: f.stat().st_mtime, reverse=True)
-        if not apk_files:
-            return {"available": False}
-        f = apk_files[0]
-        return {"available": True, "filename": f.name, "size": f.stat().st_size}
+@app.get("/api/download/app")
+async def download_apk():
+    if not APK_DOWNLOAD_URL:
+        raise HTTPException(404, "APK файл тохируулагдаагүй")
+    return RedirectResponse(APK_DOWNLOAD_URL)
+
+@app.get("/api/download/check")
+async def check_apk():
+    if not APK_DOWNLOAD_URL:
+        return {"available": False}
+    return {"available": True, "filename": APK_FILENAME, "size": int(APK_SIZE) if APK_SIZE else 0}
 
 FRONTEND_DIR = ROOT_DIR / "frontend"
 if FRONTEND_DIR.exists():
