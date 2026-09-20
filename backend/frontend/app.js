@@ -338,17 +338,15 @@ function showLogin() {
         <button onclick="showCodeLoginForm()" class="code-login-toggle-btn">🔑 Кодоор нэвтрэх</button>
       </div>
       <div id="code-login-form" style="display:none;width:100%;max-width:320px;margin-top:16px">
-        <div style="display:flex;flex-direction:column;gap:12px;background:rgba(255,255,255,0.08);border-radius:16px;padding:20px;border:1px solid rgba(255,255,255,0.15)">
-          <p style="color:rgba(255,255,255,0.85);font-size:.85rem;font-weight:600;margin:0">Утасны дугаар</p>
-          <input id="code-phone" type="tel" placeholder="99112233" maxlength="15" class="code-input-field">
-          <p style="color:rgba(255,255,255,0.85);font-size:.85rem;font-weight:600;margin:0">4 оронтой код</p>
+        <div class="code-form-box">
+          <p class="code-form-label">4 оронтой код</p>
           <div style="display:flex;gap:8px;justify-content:center" id="code-digits-row">
             <input class="code-digit" type="tel" maxlength="1" data-idx="0" oninput="codeDigitInput(this,0)" onkeydown="codeDigitKey(event,0)">
             <input class="code-digit" type="tel" maxlength="1" data-idx="1" oninput="codeDigitInput(this,1)" onkeydown="codeDigitKey(event,1)">
             <input class="code-digit" type="tel" maxlength="1" data-idx="2" oninput="codeDigitInput(this,2)" onkeydown="codeDigitKey(event,2)">
             <input class="code-digit" type="tel" maxlength="1" data-idx="3" oninput="codeDigitInput(this,3)" onkeydown="codeDigitKey(event,3)">
           </div>
-          <p id="code-error" style="color:#fca5a5;font-size:.8rem;text-align:center;margin:0;display:none"></p>
+          <p id="code-error" style="color:#ef4444;font-size:.8rem;text-align:center;margin:0;display:none"></p>
           <button onclick="submitCodeLogin()" id="code-submit-btn" class="code-submit-btn">Нэвтрэх</button>
         </div>
       </div>
@@ -412,14 +410,13 @@ function codeDigitKey(e, idx) {
 }
 
 async function submitCodeLogin() {
-  const phone = (document.getElementById('code-phone')?.value || '').trim();
   const digits = document.querySelectorAll('.code-digit');
   const code = Array.from(digits).map(d => d.value).join('');
   const errEl = document.getElementById('code-error');
   const btn = document.getElementById('code-submit-btn');
 
-  if (phone.length < 6 || code.length < 4) {
-    if (errEl) { errEl.textContent = 'Утасны дугаар болон 4 оронтой код оруулна уу'; errEl.style.display = 'block'; }
+  if (code.length < 4) {
+    if (errEl) { errEl.textContent = '4 оронтой код оруулна уу'; errEl.style.display = 'block'; }
     return;
   }
   if (errEl) errEl.style.display = 'none';
@@ -428,7 +425,7 @@ async function submitCodeLogin() {
   try {
     const data = await api('/auth/code-login', {
       method: 'POST',
-      body: JSON.stringify({ phone, code }),
+      body: JSON.stringify({ code }),
     });
     token = data.session_token;
     user = data.user;

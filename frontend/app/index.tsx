@@ -48,7 +48,6 @@ function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { login, codeLogin, signingIn, configError } = useAuth();
   const [showCodeLogin, setShowCodeLogin] = useState(false);
-  const [phone, setPhone] = useState("");
   const [digits, setDigits] = useState(["", "", "", ""]);
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeLoading, setCodeLoading] = useState(false);
@@ -75,14 +74,14 @@ function LoginScreen() {
   };
 
   const fullCode = digits.join("");
-  const canSubmitCode = phone.trim().length >= 6 && fullCode.length === 4;
+  const canSubmitCode = fullCode.length === 4;
 
   const handleCodeSubmit = async () => {
     if (!canSubmitCode) return;
     setCodeError(null);
     setCodeLoading(true);
     try {
-      await codeLogin(phone.trim(), fullCode);
+      await codeLogin(fullCode);
     } catch (e) {
       setCodeError(e instanceof ApiError ? e.message : "Нэвтрэхэд алдаа гарлаа");
     } finally {
@@ -110,26 +109,10 @@ function LoginScreen() {
             </View>
             <Text style={styles.loginTitle}>Кодоор нэвтрэх</Text>
             <Text style={styles.loginSubtitle}>
-              Админаас авсан утасны дугаар болон 4 оронтой кодоо оруулна уу.
+              Админаас авсан 4 оронтой кодоо оруулна уу.
             </Text>
 
             <View style={{ marginTop: 32, gap: 20 }}>
-              <View>
-                <Text style={styles.codeLabel}>Утасны дугаар</Text>
-                <View style={styles.phoneInputWrap}>
-                  <Ionicons name="call-outline" size={20} color="rgba(255,255,255,0.6)" />
-                  <TextInput
-                    value={phone}
-                    onChangeText={setPhone}
-                    placeholder="99112233"
-                    placeholderTextColor="rgba(255,255,255,0.35)"
-                    keyboardType="phone-pad"
-                    maxLength={15}
-                    style={styles.phoneInput}
-                  />
-                </View>
-              </View>
-
               <View>
                 <Text style={styles.codeLabel}>4 оронтой код</Text>
                 <View style={styles.codeRow}>
@@ -399,18 +382,6 @@ const useStyles = makeStyles((colors) => ({
   codeLoginBtnText: { color: "#FFFFFF", fontSize: 15, fontFamily: font.semibold },
   backBtn: { marginBottom: 20 },
   codeLabel: { color: "rgba(255,255,255,0.85)", fontSize: 14, fontFamily: font.semibold, marginBottom: 8 },
-  phoneInputWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    minHeight: 52,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "rgba(255,255,255,0.3)",
-    paddingHorizontal: 14,
-    backgroundColor: "rgba(255,255,255,0.1)",
-  },
-  phoneInput: { flex: 1, fontSize: 17, color: "#FFFFFF", fontFamily: font.semibold },
   codeRow: { flexDirection: "row", justifyContent: "center", gap: 12 },
   codeInput: {
     width: 56,

@@ -164,7 +164,6 @@ class GoogleSignIn(BaseModel):
 
 
 class CodeLoginRequest(BaseModel):
-    phone: str
     code: str
 
 
@@ -265,40 +264,42 @@ async def auth_google(body: GoogleSignIn):
 
 @api_router.post("/auth/code-login")
 async def auth_code_login(body: CodeLoginRequest):
-    """Login with a phone number and 4-digit access code assigned by the admin."""
-    phone = re.sub(r"\D", "", body.phone.strip())
+    """Login with a 4-digit access code assigned by the admin via Telegram."""
     code = body.code.strip()
-    if not phone or not code:
-        raise HTTPException(status_code=400, detail="Утасны дугаар болон код шаардлагатай")
+    if not code or len(code) != 4:
+        raise HTTPException(status_code=400, detail="4 оронтой код оруулна уу")
 
-    entry = await db.access_codes.find_one({"phone": phone, "code": code})
+    entry = await db.access_codes.find_one({"code": code})
     if not entry:
-        raise HTTPException(status_code=401, detail="Утасны дугаар эсвэл код буруу байна")
+        raise HTTPException(status_code=401, detail="Код буруу байна")
 
-    existing = await db.users.find_one({"phone": phone})
-    if existing:
-        user_id = existing["user_id"]
-        await db.users.update_one(
-            {"user_id": user_id},
-            {"$set": {"lastLoginAt": now_utc().isoformat(), "isPro": True}},
-        )
-    else:
-        user_id = f"user_{uuid.uuid4().hex[:12]}"
-        await db.users.insert_one({
-            "user_id": user_id,
-            "phone": phone,
-            "email": None,
-            "google_sub": None,
-            "name": f"User {phone[-4:]}",
-            "picture": None,
-            "profileName": None,
-            "profileNameLower": None,
-            "isPro": True,
-            "proActivatedAt": now_utc().isoformat(),
-            "proSource": "code",
-            "createdAt": now_utc().isoformat(),
-            "lastLoginAt": now_utc().isoformat(),
-        })
+    if entry.get("user_id"):
+        existing = await db.users.find_one({"user_id": entry["user_id"]})
+        if existing:
+            await db.users.update_one(
+                {"user_id": existing["user_id"]},
+                {"$set": {"lastLoginAt": now_utc().isoformat(), "isPro": True}},
+            )
+            token = await issue_session(existing["user_id"])
+            user = await db.users.find_one({"user_id": existing["user_id"]}, {"_id": 0})
+            return {"session_token": token, "user": user}
+
+    user_id = f"user_{uuid.uuid4().hex[:12]}"
+    await db.users.insert_one({
+        "user_id": user_id,
+        "email": None,
+        "google_sub": None,
+        "name": entry.get("label") or f"User {code}",
+        "picture": None,
+        "profileName": None,
+        "profileNameLower": None,
+        "isPro": True,
+        "proActivatedAt": now_utc().isoformat(),
+        "proSource": "code",
+        "createdAt": now_utc().isoformat(),
+        "lastLoginAt": now_utc().isoformat(),
+    })
+    await db.access_codes.update_one({"code": code}, {"$set": {"user_id": user_id}})
 
     token = await issue_session(user_id)
     user = await db.users.find_one({"user_id": user_id}, {"_id": 0})
@@ -1344,23 +1345,23 @@ async def handle_admin_command(chat_id, text):
         return await deactivate(text[7:].strip())
     if low.startswith("/check "):
         return await check(text[7:].strip())
-    if low.startswith("/addnumber "):
-        parts = text[11:].strip().split()
-        if not parts:
-            return "❌ Формат: /addnumber 99112233"
-        raw_phone = re.sub(r"\D", "", parts[0])
-        if not raw_phone or len(raw_phone) < 6:
-            return "❌ Утасны дугаар буруу байна."
-        code = str(random.randint(1000, 9999))
-        await db.access_codes.update_one(
-            {"phone": raw_phone},
-            {"$set": {"phone": raw_phone, "code": code, "createdAt": now_utc().isoformat()}},
-            upsert=True,
-        )
-        return (f"✅ Дугаар нэмэгдлээ!\n\n"
-                f"📱 Дугаар: <code>{raw_phone}</code>\n"
-                f"🔑 Код: <code>{code}</code>\n\n"
-                f"Хэрэглэгч энэ дугаар + кодоор нэвтэрч PRO хувилбараар ашиглах боломжтой.")
+    if low == "/addnumber" or low.startswith("/addnumber "):
+        label = text[11:].strip() if low.startswith("/addnumber ") else ""
+        for _ in range(20):
+            code = str(random.randint(1000, 9999))
+            if not await db.access_codes.find_one({"code": code}):
+                break
+        await db.access_codes.insert_one({
+            "code": code,
+            "label": label or None,
+            "user_id": None,
+            "createdAt": now_utc().isoformat(),
+        })
+        msg = f"✅ Шинэ код үүсгэлээ!\n\n🔑 Код: <code>{code}</code>"
+        if label:
+            msg += f"\n📝 Тэмдэглэл: {label}"
+        msg += "\n\nХэрэглэгч энэ кодоор нэвтэрч PRO хувилбараар ашиглах боломжтой."
+        return msg
 
     if low in ("/start", "/help"):
         return ("Админ командууд:\n"
@@ -1370,7 +1371,7 @@ async def handle_admin_command(chat_id, text):
                 "/list → PRO хэрэглэгчид\n"
                 "/pending → баталгаажаагүй шилжүүлгүүд\n"
                 "/stats → хэрэглэгч, идэвх, орлогын тойм\n"
-                "/addnumber 99112233 → утасны дугаар + код нэмэх (PRO нэвтрэлт)")
+                "/addnumber → 4 оронтой PRO нэвтрэх код үүсгэх")
     # plain text = profile name to activate
     if text and not text.startswith("/"):
         return await activate(text)
@@ -1618,8 +1619,7 @@ async def on_startup():
     await db.categories.create_index("category_id", unique=True)
     await db.userProgress.create_index([("user_id", 1), ("isBookmarked", 1)])
     await db.userProgress.create_index([("user_id", 1), ("isCorrect", 1)])
-    await db.access_codes.create_index("phone", unique=True)
-    await db.users.create_index("phone", unique=True, sparse=True)
+    await db.access_codes.create_index("code", unique=True)
     logger.info("Indexes ready")
     await cleanup_stale()
     # Auto-seed questions/categories on an empty DB so a fresh deploy works out of the box.
