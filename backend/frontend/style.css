@@ -83,6 +83,7 @@ img{max-width:100%}
 @keyframes progressPulse{0%,100%{opacity:1}50%{opacity:.7}}
 @keyframes slideRight{from{width:0}to{width:var(--target-width,100%)}}
 @keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.03)}}
+@keyframes rippleWave{to{transform:scale(4);opacity:0}}
 
 /* ---------- skeleton loading ---------- */
 .skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface3) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:var(--radius-xs)}
@@ -440,3 +441,102 @@ main{flex:1;padding:20px 0 calc(var(--nav-height) + 24px)}
 /* ---------- tip card ---------- */
 .tip-card{background:linear-gradient(135deg,rgba(99,102,241,.06),rgba(139,92,246,.06));border:1px solid rgba(99,102,241,.12);border-radius:var(--radius-sm);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:10px;font-size:.82rem;line-height:1.6;color:var(--text2);animation:fadeInScale .5s var(--ease-out-expo)}
 .tip-card-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px}
+
+/* ---------- page transition ---------- */
+.page-enter{animation:pageEnter .4s var(--ease-out-expo) forwards}
+.page-exit{animation:pageExit .2s ease-in forwards}
+@keyframes pageEnter{from{opacity:0;transform:translateY(16px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes pageExit{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(-8px) scale(.98)}}
+
+/* ---------- ripple ---------- */
+.ripple{position:relative;overflow:hidden}
+.ripple::after{content:'';position:absolute;border-radius:50%;background:rgba(255,255,255,.3);width:100px;height:100px;margin-top:-50px;margin-left:-50px;opacity:0;transition:all .6s;transform:scale(10);pointer-events:none}
+.ripple:active::after{transform:scale(0);opacity:.4;transition:0s}
+
+/* ---------- animated gradient text ---------- */
+.gradient-text-animated{background:linear-gradient(270deg,#6366f1,#8b5cf6,#ec4899,#f97316,#6366f1);background-size:400% 400%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;animation:gradientShift 6s ease infinite}
+@keyframes gradientShift{0%{background-position:0% 50%}50%{background-position:100% 50%}100%{background-position:0% 50%}}
+
+/* ---------- glass card ---------- */
+.card-glass{background:var(--surface-glass);backdrop-filter:blur(20px) saturate(1.6);-webkit-backdrop-filter:blur(20px) saturate(1.6);border:1px solid rgba(255,255,255,.1)}
+
+/* ---------- confetti ---------- */
+.confetti-container{position:fixed;top:0;left:0;right:0;height:100vh;pointer-events:none;z-index:99;overflow:hidden}
+.confetti-piece{position:absolute;width:10px;height:10px;top:-20px;animation:confettiFall 3s ease-in forwards}
+.confetti-piece:nth-child(odd){border-radius:50%}
+@keyframes confettiFall{0%{transform:translateY(0) rotateZ(0);opacity:1}100%{transform:translateY(100vh) rotateZ(720deg);opacity:0}}
+
+/* ---------- number counter animation ---------- */
+.counter-animate{display:inline-block;animation:countUp .6s var(--ease-out-expo) backwards}
+
+/* ---------- card hover lift ---------- */
+.card-lift{transition:all .35s var(--ease-out-expo)}
+.card-lift:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg)}
+.card-lift:active{transform:translateY(-1px)}
+
+/* ---------- success checkmark ---------- */
+.check-circle{width:80px;height:80px;border-radius:50%;background:var(--gradient-success);display:flex;align-items:center;justify-content:center;margin:0 auto;animation:checkPop .5s var(--ease-spring);box-shadow:0 8px 30px rgba(16,185,129,.35)}
+.check-circle svg{color:#fff;animation:checkDraw .4s ease .2s backwards}
+@keyframes checkPop{from{transform:scale(0) rotate(-45deg);opacity:0}to{transform:scale(1) rotate(0);opacity:1}}
+@keyframes checkDraw{from{stroke-dashoffset:30;opacity:0}to{stroke-dashoffset:0;opacity:1}}
+
+/* ---------- notification dot ---------- */
+.notif-dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;background:var(--danger);border-radius:50%;border:2px solid var(--surface);animation:pulse 2s infinite}
+
+/* ---------- slide up info panel ---------- */
+.info-panel{background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;padding:24px 20px;animation:slideUp .45s var(--ease-out-expo);box-shadow:var(--shadow-xl);border-top:3px solid var(--primary)}
+
+/* ---------- tag pill ---------- */
+.tag{display:inline-flex;align-items:center;padding:4px 12px;border-radius:99px;font-size:.7rem;font-weight:600;background:var(--surface2);color:var(--text2);transition:all .2s var(--ease-out-expo);gap:4px}
+.tag:hover{background:var(--primary-light);color:var(--primary)}
+
+/* ---------- animated progress bar ---------- */
+.progress-animated .cat-progress-bar{animation:progressGrow 1s var(--ease-out-expo) forwards;width:0}
+@keyframes progressGrow{from{width:0}to{width:var(--target,100%)}}
+
+/* ---------- hover card glow ---------- */
+.card:hover{box-shadow:var(--shadow-md),0 0 0 1px var(--border)}
+.cat-item::before{content:'';position:absolute;inset:0;border-radius:inherit;background:linear-gradient(135deg,transparent 40%,rgba(99,102,241,.03) 100%);opacity:0;transition:opacity .3s}
+.cat-item:hover::before{opacity:1}
+
+/* ---------- stat card shimmer ---------- */
+.stat-card::before{content:'';position:absolute;top:0;left:-50%;width:50%;height:100%;background:linear-gradient(90deg,transparent,rgba(255,255,255,.04),transparent);transition:left .6s ease;pointer-events:none}
+.stat-card:hover::before{left:150%}
+
+/* ---------- text gradient utility ---------- */
+.text-gradient{background:var(--gradient-primary);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.text-gradient-pro{background:var(--gradient-pro);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+/* ---------- bounce dot loader ---------- */
+.dot-loader{display:flex;gap:6px;justify-content:center;padding:20px}
+.dot-loader span{width:10px;height:10px;border-radius:50%;background:var(--primary);animation:dotBounce .6s infinite alternate}
+.dot-loader span:nth-child(2){animation-delay:.15s}
+.dot-loader span:nth-child(3){animation-delay:.3s}
+@keyframes dotBounce{from{transform:translateY(0);opacity:.4}to{transform:translateY(-12px);opacity:1}}
+
+/* ---------- floating action button ---------- */
+.fab{position:fixed;bottom:calc(var(--nav-height) + 16px);right:16px;width:56px;height:56px;border-radius:50%;background:var(--gradient-primary);color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 24px rgba(99,102,241,.4);z-index:40;transition:all .3s var(--ease-spring);animation:scaleIn .4s var(--ease-spring)}
+.fab:hover{transform:scale(1.1) rotate(5deg);box-shadow:0 10px 36px rgba(99,102,241,.5)}
+.fab:active{transform:scale(.9)}
+.fab svg{width:24px;height:24px;filter:drop-shadow(0 1px 2px rgba(0,0,0,.2))}
+
+/* ---------- smooth img loading ---------- */
+.q-image{transition:opacity .4s}
+.q-image[data-loaded="false"]{opacity:0}
+
+/* ---------- stagger children ---------- */
+.stagger>*:nth-child(1){animation-delay:.03s}
+.stagger>*:nth-child(2){animation-delay:.06s}
+.stagger>*:nth-child(3){animation-delay:.09s}
+.stagger>*:nth-child(4){animation-delay:.12s}
+.stagger>*:nth-child(5){animation-delay:.15s}
+.stagger>*:nth-child(6){animation-delay:.18s}
+.stagger>*:nth-child(7){animation-delay:.21s}
+.stagger>*:nth-child(8){animation-delay:.24s}
+
+/* ---------- top bar accent line ---------- */
+header::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;background:var(--gradient-primary);opacity:0;transition:opacity .3s}
+header.scrolled::after{opacity:.6}
+
+/* ---------- keyboard shortcuts hint ---------- */
+.kbd{display:inline-flex;padding:2px 8px;background:var(--surface2);border:1px solid var(--border-solid);border-radius:6px;font-size:.65rem;font-weight:700;color:var(--text3);font-family:'Inter',monospace}

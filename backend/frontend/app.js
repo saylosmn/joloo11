@@ -26,6 +26,64 @@ function toast(msg, ms = 2500) {
   setTimeout(() => el.classList.remove('show'), ms);
 }
 
+function pageTransition(callback) {
+  const app = $('#app');
+  app.classList.add('page-exit');
+  setTimeout(() => {
+    callback();
+    app.classList.remove('page-exit');
+    app.classList.add('page-enter');
+    setTimeout(() => app.classList.remove('page-enter'), 400);
+  }, 180);
+}
+
+function showConfetti() {
+  const container = document.createElement('div');
+  container.className = 'confetti-container';
+  const colors = ['#6366f1','#8b5cf6','#ec4899','#f97316','#10b981','#3b82f6','#eab308'];
+  for (let i = 0; i < 50; i++) {
+    const piece = document.createElement('div');
+    piece.className = 'confetti-piece';
+    piece.style.left = Math.random() * 100 + '%';
+    piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+    piece.style.animationDelay = Math.random() * 2 + 's';
+    piece.style.animationDuration = (2 + Math.random() * 2) + 's';
+    piece.style.width = (6 + Math.random() * 8) + 'px';
+    piece.style.height = (6 + Math.random() * 8) + 'px';
+    container.appendChild(piece);
+  }
+  document.body.appendChild(container);
+  setTimeout(() => container.remove(), 4000);
+}
+
+function animateCounter(el, target, duration = 800) {
+  let start = 0;
+  const startTime = performance.now();
+  const step = (now) => {
+    const progress = Math.min((now - startTime) / duration, 1);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    el.textContent = Math.round(eased * target);
+    if (progress < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+function addRipple(e) {
+  const btn = e.currentTarget;
+  const rect = btn.getBoundingClientRect();
+  const circle = document.createElement('span');
+  const size = Math.max(rect.width, rect.height);
+  circle.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX - rect.left - size/2}px;top:${e.clientY - rect.top - size/2}px;position:absolute;border-radius:50%;background:rgba(255,255,255,.25);transform:scale(0);animation:rippleWave .5s ease-out;pointer-events:none`;
+  btn.style.position = 'relative';
+  btn.style.overflow = 'hidden';
+  btn.appendChild(circle);
+  setTimeout(() => circle.remove(), 500);
+}
+
+function showDotLoader() {
+  return '<div class="dot-loader"><span></span><span></span><span></span></div>';
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   if (h < 6) return 'Сайн шөнө';
@@ -155,7 +213,7 @@ function nav(page, data) {
   currentPage = page;
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.toggle('active', b.dataset.page === page));
   const app = $('#app');
-  app.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+  app.innerHTML = showDotLoader();
   switch (page) {
     case 'home': renderHome(); break;
     case 'exam': renderExamMenu(); break;
@@ -195,15 +253,15 @@ async function renderHome() {
         <p>Өнөөдөр ч давтлага хийгээрэй</p>
         <div class="welcome-stats">
           <div class="welcome-stat">
-            <div class="welcome-stat-value">${overallPct}%</div>
+            <div class="welcome-stat-value stat-value" data-count="${overallPct}">${overallPct}%</div>
             <div class="welcome-stat-label">Нийт дэвшилт</div>
           </div>
           <div class="welcome-stat">
-            <div class="welcome-stat-value">${totalDone}</div>
+            <div class="welcome-stat-value stat-value" data-count="${totalDone}">${totalDone}</div>
             <div class="welcome-stat-label">Хариулсан</div>
           </div>
           <div class="welcome-stat">
-            <div class="welcome-stat-value">${cats.length}</div>
+            <div class="welcome-stat-value stat-value" data-count="${cats.length}">${cats.length}</div>
             <div class="welcome-stat-label">Бүлэг</div>
           </div>
         </div>
@@ -261,7 +319,18 @@ async function renderHome() {
         </div>`;
     }
 
+    html += `
+      <button class="fab" onclick="startExam()" title="Шалгалт эхлүүлэх">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+      </button>`;
+
     $('#app').innerHTML = html;
+
+    setTimeout(() => {
+      document.querySelectorAll('.stat-value[data-count]').forEach(el => {
+        animateCounter(el, parseInt(el.dataset.count));
+      });
+    }, 200);
   } catch (e) {
     $('#app').innerHTML = `<div class="empty"><div class="empty-icon">😕</div><div class="empty-title">Алдаа гарлаа</div>${esc(e.message)}</div>`;
   }
@@ -631,6 +700,7 @@ async function submitExam() {
 // ── Exam result ─────────────────────────────────────────────
 function renderExamResult(result) {
   if (!result) { nav('exam'); return; }
+  if (result.passed) showConfetti();
   const cls = result.passed ? 'pass' : 'fail';
   let html = `
     <div class="card result-card ${cls}">

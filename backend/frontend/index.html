@@ -4,12 +4,24 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="theme-color" content="#f0f2f8">
+<meta name="description" content="Замын хөдөлгөөний дүрмийн шалгалтад бэлдэх хамгийн хялбар арга. 800+ асуулт, 36 бүлэг, дэлгэрэнгүй статистик.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta property="og:title" content="ЗХД Шалгалт — Жолооны шалгалтад бэлд">
+<meta property="og:description" content="Монголын #1 жолооны шалгалтын апп. 800+ асуулт, жинхэнэ шалгалтын горим.">
+<meta property="og:type" content="website">
 <title>ЗХД Шалгалт — Жолооны шалгалтад бэлд</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/frontend/style.css">
 <script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+  .app-loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px}
+  .app-loading .logo-pulse{width:80px;height:80px;border-radius:24px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;animation:pulse 1.5s infinite}
+  .app-loading .logo-pulse svg{color:#fff;width:40px;height:40px}
+  .app-loading p{color:#94a3b8;font-size:.85rem;font-weight:500}
+</style>
 </head>
 <body>
 
@@ -31,7 +43,14 @@
 
 <!-- Main content -->
 <main>
-<div class="container" id="app"></div>
+<div class="container" id="app">
+  <div class="app-loading">
+    <div class="logo-pulse">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+    </div>
+    <p>Ачаалж байна...</p>
+  </div>
+</div>
 </main>
 
 <!-- Bottom nav -->
