@@ -1665,6 +1665,12 @@ async def on_startup():
     await db.userProgress.create_index([("user_id", 1), ("isBookmarked", 1)])
     await db.userProgress.create_index([("user_id", 1), ("isCorrect", 1)])
     await db.access_codes.create_index("code", unique=True)
+    # Drop stale index left over from the old phone-based login flow.
+    try:
+        await db.access_codes.drop_index("phone_1")
+        logger.info("Dropped stale phone_1 index from access_codes")
+    except Exception:
+        pass
     logger.info("Indexes ready")
     await cleanup_stale()
     # Auto-seed questions/categories on an empty DB so a fresh deploy works out of the box.
