@@ -165,7 +165,11 @@ function LoginScreen() {
         colors={["#1D4ED8", "#2563EB", "#1E3A8A"]}
         style={styles.loginGradient}
       >
-        <View style={[styles.loginInner, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}>
+        <ScrollView
+          contentContainerStyle={[styles.loginInner, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.brandBadge}>
             <TrafficLightIcon size={72} />
           </View>
@@ -216,7 +220,7 @@ function LoginScreen() {
               {configError ?? "Нэвтэрснээр үйлчилгээний нөхцөлийг зөвшөөрч байгаа болно."}
             </Text>
           </View>
-        </View>
+        </ScrollView>
       </LinearGradient>
     </View>
   );
@@ -329,7 +333,7 @@ function ProfileSetupScreen() {
 const useStyles = makeStyles((colors) => ({
   loginRoot: { flex: 1, backgroundColor: "#1D4ED8" },
   loginGradient: { flex: 1 },
-  loginInner: { flex: 1, paddingHorizontal: 28 },
+  loginInner: { flexGrow: 1, paddingHorizontal: 28 },
   brandBadge: {
     width: 80,
     height: 80,
