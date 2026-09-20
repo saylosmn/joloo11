@@ -4,6 +4,8 @@
 import { useMemo } from "react";
 import { Appearance, StyleSheet, useColorScheme } from "react-native";
 
+import { ACCENTS, useAccent } from "@/src/lib/accent";
+
 export type ColorScheme = "light" | "dark";
 
 const light = {
@@ -49,6 +51,14 @@ const light = {
   gradientStart: "#2563EB",
   gradientEnd: "#1D4ED8",
   shadow: "#0F172A",
+
+  // Elevation surfaces. In light mode depth comes from shadows, so these stay
+  // white; in dark mode shadows are invisible, so depth comes from lightness.
+  elev1: "#FFFFFF",
+  elev2: "#FFFFFF",
+  elev3: "#FFFFFF",
+  skeleton: "#E9EEF5",
+  skeletonHighlight: "#F6F9FC",
 };
 
 const dark: typeof light = {
@@ -91,9 +101,15 @@ const dark: typeof light = {
   divider: "#1B263B",
 
   overlay: "rgba(0,0,0,0.6)",
-  gradientStart: "#1E3A8A",
-  gradientEnd: "#0B1120",
+  gradientStart: "#1B3A7A",
+  gradientEnd: "#16264A",
   shadow: "#000000",
+
+  elev1: "#141E33",
+  elev2: "#18243C",
+  elev3: "#1E2C48",
+  skeleton: "#1A2438",
+  skeletonHighlight: "#25324B",
 };
 
 export type ThemeColors = typeof light;
@@ -111,10 +127,17 @@ setColorScheme?.(themes.dark ? null : defaultScheme);
 
 export function useTheme(): { scheme: ColorScheme; colors: ThemeColors } {
   const system = useColorScheme();
+  const accent = useAccent();
   // useColorScheme can also report "unspecified"; only the two real schemes count.
   const isScheme = system === "light" || system === "dark";
   const scheme: ColorScheme = isScheme && themes[system] ? system : defaultScheme;
-  return { scheme, colors: themes[scheme] ?? themes.light };
+
+  return useMemo(() => {
+    const base = themes[scheme] ?? themes.light;
+    // Only the brand ramp is swapped, so every contrast pair stays intentional.
+    const ramp = ACCENTS[accent]?.[scheme] ?? ACCENTS.blue[scheme];
+    return { scheme, colors: { ...base, ...ramp } };
+  }, [scheme, accent]);
 }
 
 export function makeStyles<T extends StyleSheet.NamedStyles<T> | StyleSheet.NamedStyles<any>>(
@@ -134,3 +157,106 @@ export const font = {
   bold: "Manrope-Bold",
   extrabold: "Manrope-ExtraBold",
 };
+
+// ---------------------------------------------------------------------------
+// Layout tokens. Screens used to hand-write 20/18/16 everywhere; these keep the
+// rhythm consistent and match design_guidelines.json.
+// ---------------------------------------------------------------------------
+
+export const spacing = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+  xxxl: 48,
+  /** Standard screen side gutter. */
+  gutter: 20,
+} as const;
+
+export const radius = {
+  sm: 6,
+  md: 12,
+  lg: 18,
+  xl: 24,
+  xxl: 28,
+  pill: 999,
+} as const;
+
+/** Type scale. `display`/`hero` are new — they give headers real hierarchy. */
+export const type = {
+  xs: 11,
+  sm: 12,
+  base: 14,
+  md: 15,
+  lg: 17,
+  xl: 20,
+  xxl: 24,
+  title: 28,
+  display: 32,
+  hero: 44,
+} as const;
+
+/** Motion durations — one place, so animations feel like one system. */
+export const duration = {
+  instant: 120,
+  fast: 180,
+  base: 280,
+  slow: 450,
+  celebrate: 900,
+} as const;
+
+/**
+ * Motion presets. These are timing curves rather than springs on purpose:
+ * Reanimated's web runtime settles springs before they reach their target, so a
+ * spring-driven value could stop short and stay there.
+ */
+export const motion = {
+  /** Settling movement — progress, rings, sheets. */
+  soft: { duration: 320 },
+  /** Quick reaction to a touch. */
+  snappy: { duration: 140 },
+  /** Small overshoot, for feedback that should feel alive. */
+  bouncy: { duration: 320 },
+} as const;
+
+/**
+ * Depth for a surface. Light mode uses shadows; dark mode uses a lighter
+ * surface plus a hairline border, because shadows read as nothing on black.
+ */
+export function elevationStyle(colors: ThemeColors, scheme: ColorScheme, level: 0 | 1 | 2 | 3 = 1) {
+  if (level === 0) {
+    return { backgroundColor: colors.surfaceSecondary, borderWidth: 1, borderColor: colors.border };
+  }
+  const dark = scheme === "dark";
+  const bg = level === 1 ? colors.elev1 : level === 2 ? colors.elev2 : colors.elev3;
+  if (dark) {
+    return {
+      backgroundColor: bg,
+      borderWidth: 1,
+      borderColor: level >= 2 ? colors.borderStrong : colors.border,
+    };
+  }
+  const shadow = [
+    { opacity: 0.05, radius: 8, offset: 3, elevation: 1 },
+    { opacity: 0.06, radius: 10, offset: 4, elevation: 2 },
+    { opacity: 0.1, radius: 18, offset: 8, elevation: 5 },
+  ][level - 1];
+  return {
+    backgroundColor: bg,
+    borderWidth: 1,
+    borderColor: colors.border,
+    shadowColor: colors.shadow,
+    shadowOpacity: shadow.opacity,
+    shadowRadius: shadow.radius,
+    shadowOffset: { width: 0, height: shadow.offset },
+    elevation: shadow.elevation,
+  };
+}
+
+/** Hook form of {@link elevationStyle}. */
+export function useElevation(level: 0 | 1 | 2 | 3 = 1) {
+  const { colors, scheme } = useTheme();
+  return useMemo(() => elevationStyle(colors, scheme, level), [colors, scheme, level]);
+}

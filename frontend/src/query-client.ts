@@ -10,7 +10,9 @@ export const queryClient = new QueryClient({
       // Keep recently fetched data usable so tab switches feel instant and
       // the app tolerates brief connectivity drops.
       staleTime: 30 * 1000,
-      gcTime: 10 * 60 * 1000,
+      // Long enough that a persisted cache is still alive when the app is
+      // reopened days later without a connection.
+      gcTime: 7 * 24 * 60 * 60 * 1000,
       retry: 1,
       refetchOnWindowFocus: false,
     },

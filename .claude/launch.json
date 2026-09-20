@@ -3,8 +3,8 @@
   "configurations": [
     {
       "name": "app",
-      "runtimeExecutable": "npx",
-      "runtimeArgs": ["expo", "start", "--web", "--port", "8081"],
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "frontend", "run", "web"],
       "port": 8081
     }
   ]

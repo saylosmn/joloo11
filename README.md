@@ -588,6 +588,58 @@ python backend/scripts/check_mongo.py "<холболтын мөр>"
 
 ---
 
+## OTA шинэчлэлт (дэлгүүрээр дамжуулахгүй)
+
+JS/дизайны засварыг `eas update`-ээр шууд түлхэж болно — зөвхөн native код
+(шинэ dependency, permission) өөрчлөгдсөн үед л шинэ build хэрэгтэй.
+
+```bash
+# production build ашиглагчид руу
+npx eas-cli update --branch production --message "Дизайн сайжруулалт"
+
+# preview (дотоод тест) build руу
+npx eas-cli update --branch preview --message "Туршилт"
+```
+
+- `runtimeVersion` нь `appVersion` бодлоготой тул `app.json`-ы `version`-ыг
+  өөрчилбөл хуучин build-ууд шинэ update-ыг **авахгүй** (зөв хандлага:
+  native өөрчлөлттэй хувилбарт хуучин апп унахаас сэргийлнэ).
+- Апп нээгдэх бүрт (30 минутад нэг удаа) нам гүм шалгаж, татаж авсны дараа
+  нүүр хуудсанд «Шинэчлэлт бэлэн боллоо» карт гарна. Хэзээ дахин ачаалахыг
+  хэрэглэгч өөрөө шийднэ — шалгалт өгч байхад нь албадан дахин ачаалахгүй.
+
+---
+
+## Зургийг CDN-ээс тараах (сонголттой)
+
+Асуултын 800 зураг нь серверийн хамгийн их зурвас иддэг хэсэг. Backend-д
+`IMAGE_CDN_BASE` тохируулбал API нь зургийн хаягийг шууд CDN руу заана:
+
+```bash
+# backend/.env
+IMAGE_CDN_BASE=https://cdn.example.com/zhd-images
+# сонголттой: кэшийн хугацаа (анхдагч 1 жил)
+IMAGE_CACHE_SECONDS=31536000
+```
+
+1. `backend/data/images/` доторх файлуудыг bucket руу хуулна
+   (Cloudflare R2 / Bunny / S3 — аль нь ч болно):
+
+   ```bash
+   rclone copy backend/data/images r2:zhd-images --progress
+   # эсвэл
+   aws s3 sync backend/data/images s3://zhd-images --cache-control "public, max-age=31536000, immutable"
+   ```
+
+2. `IMAGE_CDN_BASE`-ээ тохируулаад backend-ээ дахин deploy хийнэ.
+3. Апп талд өөрчлөлт хэрэггүй — `imageUrl()` нь `http`-ээр эхэлсэн хаягийг
+   шууд ашигладаг.
+
+Тохируулаагүй үед зураг хуучнаараа `/api/images/...`-аас явах бөгөөд одоо
+`Cache-Control: public, max-age=…, immutable` толгойтой тул давтан татагдахгүй.
+
+---
+
 ## Deploy — өөр газар
 
 Backend бол ердийн FastAPI апп тул Docker ажиллуулдаг ямар ч газар (Railway,

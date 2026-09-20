@@ -4,17 +4,10 @@ import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import * as Linking from "expo-linking";
 import { useEffect, useRef, useState } from "react";
-import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  View,
-} from "react-native";
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
 import { PrimaryButton } from "@/src/components/ui";
 import { ApiError, api } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";

@@ -2,14 +2,20 @@ import Ionicons from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { useState } from "react";
-import { FlatList, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
+import { OfflineBanner } from "@/src/components/OfflineBanner";
 import { ProModal } from "@/src/components/ProModal";
+import { Sheet } from "@/src/components/Sheet";
 import { Badge, Card, PrimaryButton } from "@/src/components/ui";
 import { api } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";
-import { font, makeStyles, useTheme } from "@/src/theme";
+import { categoryShortName, categoryVisual } from "@/src/lib/category-visual";
+import { useResponsive } from "@/src/lib/responsive";
+import { useBottomTabBarHeight } from "@/src/lib/tab-bar";
+import { font, makeStyles, radius, spacing, type, useTheme } from "@/src/theme";
 
 export default function ExamTab() {
   const styles = useStyles();
@@ -33,13 +39,20 @@ export default function ExamTab() {
 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [proOpen, setProOpen] = useState(false);
+  const tabBarHeight = useBottomTabBarHeight();
+  const { contentWidthStyle } = useResponsive();
 
   return (
     <ScrollView
       style={{ flex: 1, backgroundColor: colors.surface }}
-      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
+      contentContainerStyle={[
+        styles.content,
+        contentWidthStyle,
+        { paddingTop: insets.top + spacing.lg, paddingBottom: tabBarHeight + spacing.xl },
+      ]}
       showsVerticalScrollIndicator={false}
     >
+      <OfflineBanner compact />
       <Text style={styles.title}>Шалгалт</Text>
       <Text style={styles.sub}>Жинхэнэ шалгалттай ижил нөхцөлд өөрийгөө сориорой.</Text>
 
@@ -69,6 +82,8 @@ export default function ExamTab() {
           style={styles.resumeCard}
           onPress={() => router.push("/exam/session")}
           testID="resume-exam-card"
+          accessibilityRole="button"
+          accessibilityLabel={`Дуусаагүй шалгалт, ${Math.ceil(unfinished.remainingSeconds / 60)} минут үлдсэн. Үргэлжлүүлэх`}
         >
           <View style={styles.resumeIcon}>
             <Ionicons name="play-back" size={22} color={colors.warning} />
@@ -99,7 +114,39 @@ export default function ExamTab() {
         <View style={styles.orLine} />
       </View>
 
-      <Pressable style={styles.byCatBtn} onPress={() => setPickerOpen(true)} testID="by-category-exam-button">
+      <Text style={styles.modesTitle}>Богино горимууд</Text>
+      <View style={styles.modesRow}>
+        {[
+          { key: "blitz", icon: "flash", title: "5 минутын блиц", sub: "10 асуулт · 5 мин", color: colors.warning },
+          { key: "signs", icon: "trail-sign", title: "Замын тэмдэг", sub: "20 зурагтай асуулт", color: colors.info },
+          { key: "weak", icon: "trending-down", title: "Сул талаа засах", sub: "15 асуулт", color: colors.error },
+          { key: "marathon", icon: "infinite", title: "Марафон", sub: "100 асуулт", color: colors.success },
+        ].map((m) => (
+          <Pressable
+            key={m.key}
+            testID={`quick-${m.key}`}
+            accessibilityRole="button"
+            accessibilityLabel={`${m.title}. ${m.sub}`}
+            // cast: expo-router regenerates typed routes on the next dev run
+            onPress={() => router.push(`/quick/${m.key}` as never)}
+            style={({ pressed }) => [styles.modeCard, pressed && { opacity: 0.92 }]}
+          >
+            <View style={[styles.modeIcon, { backgroundColor: m.color + "22" }]}>
+              <Ionicons name={m.icon as any} size={20} color={m.color} />
+            </View>
+            <Text style={styles.modeTitle}>{m.title}</Text>
+            <Text style={styles.modeSub}>{m.sub}</Text>
+          </Pressable>
+        ))}
+      </View>
+
+      <Pressable
+        style={styles.byCatBtn}
+        onPress={() => setPickerOpen(true)}
+        testID="by-category-exam-button"
+        accessibilityRole="button"
+        accessibilityLabel="Бүлгээр шалгалт өгөх — бүлэг сонгох"
+      >
         <View style={styles.byCatIcon}>
           <Ionicons name="albums" size={22} color={colors.brandPrimary} />
         </View>
@@ -110,44 +157,52 @@ export default function ExamTab() {
         <Ionicons name="chevron-forward" size={20} color={colors.muted} />
       </Pressable>
 
-      <Modal visible={pickerOpen} transparent animationType="slide" onRequestClose={() => setPickerOpen(false)}>
-        <Pressable style={styles.backdrop} onPress={() => setPickerOpen(false)} />
-        <View style={[styles.pickerSheet, { paddingBottom: insets.bottom + 16 }]} testID="category-exam-picker">
-          <View style={styles.handle} />
-          <Text style={styles.pickerTitle}>Бүлэг сонгох</Text>
-          <FlatList
-            data={cats.data || []}
-            keyExtractor={(c: any) => c.category_id}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 8 }}
-            renderItem={({ item }) => (
-              <Pressable
-                testID={`cat-exam-${item.category_id}`}
-                style={({ pressed }) => [styles.pickerRow, pressed && { backgroundColor: colors.surfaceTertiary }]}
-                onPress={() => {
-                  if (item.locked) {
-                    setPickerOpen(false);
-                    setProOpen(true);
-                    return;
-                  }
+      <Sheet
+        visible={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        title="Бүлэг сонгох"
+        snapPoints={["75%"]}
+        testID="category-exam-picker"
+      >
+        {(cats.data || []).map((item: any) => {
+          const visual = categoryVisual(item.name);
+          return (
+            <Pressable
+              key={item.category_id}
+              testID={`cat-exam-${item.category_id}`}
+              accessibilityRole="button"
+              accessibilityLabel={
+                item.locked
+                  ? `${categoryShortName(item.name)} — PRO шаардлагатай`
+                  : `${categoryShortName(item.name)}, ${item.questionCount} асуулт`
+              }
+              style={({ pressed }) => [styles.pickerRow, pressed && { backgroundColor: colors.surfaceTertiary }]}
+              onPress={() => {
+                if (item.locked) {
                   setPickerOpen(false);
-                  router.push(`/exam/session?categoryId=${item.category_id}`);
-                }}
-              >
-                <Text style={styles.pickerName} numberOfLines={1}>{item.name}</Text>
-                {item.locked ? (
-                  <Ionicons name="lock-closed" size={16} color={colors.muted} />
-                ) : (
-                  <View style={styles.pickerRight}>
-                    <Text style={styles.pickerCount}>{item.questionCount}</Text>
-                    <Ionicons name="chevron-forward" size={16} color={colors.muted} />
-                  </View>
-                )}
-              </Pressable>
-            )}
-          />
-        </View>
-      </Modal>
+                  setProOpen(true);
+                  return;
+                }
+                setPickerOpen(false);
+                router.push(`/exam/session?categoryId=${item.category_id}`);
+              }}
+            >
+              <View style={[styles.pickerIcon, { backgroundColor: visual.color + "22" }]}>
+                <Ionicons name={visual.icon as any} size={16} color={visual.color} />
+              </View>
+              <Text style={styles.pickerName} numberOfLines={1}>{categoryShortName(item.name)}</Text>
+              {item.locked ? (
+                <Ionicons name="lock-closed" size={16} color={colors.muted} />
+              ) : (
+                <View style={styles.pickerRight}>
+                  <Text style={styles.pickerCount}>{item.questionCount}</Text>
+                  <Ionicons name="chevron-forward" size={16} color={colors.muted} />
+                </View>
+              )}
+            </Pressable>
+          );
+        })}
+      </Sheet>
 
       <ProModal visible={proOpen} onClose={() => setProOpen(false)} profileName={user?.profileName} reason="Энэ бүлэг зөвхөн PRO хэрэглэгчдэд нээлттэй." />
     </ScrollView>
@@ -169,54 +224,69 @@ function Rule({ icon, label, value }: { icon: any; label: string; value: string 
 }
 
 const useStyles = makeStyles((colors) => ({
-  content: { paddingHorizontal: 20, paddingBottom: 32 },
-  title: { color: colors.onSurface, fontSize: 26, fontFamily: font.extrabold },
-  sub: { color: colors.muted, fontSize: 14, marginTop: 4, marginBottom: 20, fontFamily: font.regular },
+  content: { paddingHorizontal: spacing.gutter, paddingBottom: spacing.xxl },
+  title: { color: colors.onSurface, fontSize: type.title, fontFamily: font.extrabold },
+  sub: { color: colors.muted, fontSize: type.base, marginTop: 4, marginBottom: spacing.xl, fontFamily: font.regular },
   heroIcon: {
-    width: 84, height: 84, borderRadius: 26, backgroundColor: colors.brandTertiary,
-    alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: 24,
+    width: 84, height: 84, borderRadius: radius.xl, backgroundColor: colors.brandTertiary,
+    alignItems: "center", justifyContent: "center", alignSelf: "center", marginBottom: spacing.xl,
   },
-  ruleRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  ruleIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: colors.brandTertiary, alignItems: "center", justifyContent: "center" },
-  ruleLabel: { flex: 1, color: colors.onSurfaceSecondary, fontSize: 15, fontFamily: font.medium },
-  ruleValue: { color: colors.onSurface, fontSize: 15, fontFamily: font.bold },
+  ruleRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  ruleIcon: {
+    width: 38, height: 38, borderRadius: radius.sm + 4, backgroundColor: colors.brandTertiary,
+    alignItems: "center", justifyContent: "center",
+  },
+  ruleLabel: { flex: 1, color: colors.onSurfaceSecondary, fontSize: type.md, fontFamily: font.medium },
+  ruleValue: { color: colors.onSurface, fontSize: type.md, fontFamily: font.bold },
   resumeCard: {
-    flexDirection: "row", alignItems: "center", gap: 12, marginTop: 16,
-    backgroundColor: colors.warningSubtle, borderRadius: 18, padding: 14,
+    flexDirection: "row", alignItems: "center", gap: spacing.md, marginTop: spacing.lg,
+    backgroundColor: colors.warningSubtle, borderRadius: radius.lg, padding: spacing.md + 2,
     borderWidth: 1, borderColor: colors.warning,
   },
   resumeIcon: {
-    width: 44, height: 44, borderRadius: 12, backgroundColor: colors.surfaceSecondary,
+    width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.surfaceSecondary,
     alignItems: "center", justifyContent: "center",
   },
-  resumeTitle: { color: colors.onSurface, fontSize: 15, fontFamily: font.bold },
-  resumeSub: { color: colors.onSurfaceSecondary, fontSize: 13, fontFamily: font.regular, marginTop: 2 },
+  resumeTitle: { color: colors.onSurface, fontSize: type.md, fontFamily: font.bold },
+  resumeSub: { color: colors.onSurfaceSecondary, fontSize: type.sm, fontFamily: font.regular, marginTop: 2 },
   divider: { height: 1, backgroundColor: colors.divider },
-  freeNote: { marginTop: 16, gap: 8, alignItems: "flex-start" },
-  freeText: { color: colors.muted, fontSize: 13, fontFamily: font.regular },
-  orRow: { flexDirection: "row", alignItems: "center", gap: 12, marginVertical: 18 },
+  freeNote: { marginTop: spacing.lg, gap: spacing.sm, alignItems: "flex-start" },
+  freeText: { color: colors.muted, fontSize: type.sm, fontFamily: font.regular },
+  orRow: { flexDirection: "row", alignItems: "center", gap: spacing.md, marginVertical: spacing.lg + 2 },
   orLine: { flex: 1, height: 1, backgroundColor: colors.divider },
-  orText: { color: colors.muted, fontSize: 13, fontFamily: font.medium },
+  orText: { color: colors.muted, fontSize: type.sm, fontFamily: font.medium },
   byCatBtn: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: colors.surfaceSecondary, borderRadius: 18, padding: 16,
+    flexDirection: "row", alignItems: "center", gap: spacing.md,
+    backgroundColor: colors.elev1, borderRadius: radius.lg, padding: spacing.lg,
     borderWidth: 1, borderColor: colors.border,
   },
-  byCatIcon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.brandTertiary, alignItems: "center", justifyContent: "center" },
-  byCatTitle: { color: colors.onSurface, fontSize: 16, fontFamily: font.bold },
-  byCatSub: { color: colors.muted, fontSize: 13, fontFamily: font.regular },
-  backdrop: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.overlay },
-  pickerSheet: {
-    marginTop: "auto", backgroundColor: colors.surfaceSecondary, borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingHorizontal: 20, paddingTop: 12, maxHeight: "75%",
+  byCatIcon: {
+    width: 44, height: 44, borderRadius: radius.md, backgroundColor: colors.brandTertiary,
+    alignItems: "center", justifyContent: "center",
   },
-  handle: { width: 40, height: 4, borderRadius: 999, backgroundColor: colors.borderStrong, alignSelf: "center", marginBottom: 16 },
-  pickerTitle: { color: colors.onSurface, fontSize: 18, fontFamily: font.bold, marginBottom: 8 },
+  byCatTitle: { color: colors.onSurface, fontSize: type.lg, fontFamily: font.bold },
+  byCatSub: { color: colors.muted, fontSize: type.sm, fontFamily: font.regular },
+  modesTitle: { color: colors.onSurface, fontSize: type.xl, fontFamily: font.bold, marginTop: spacing.xl, marginBottom: spacing.md },
+  modesRow: { flexDirection: "row", flexWrap: "wrap", gap: spacing.md, marginBottom: spacing.lg },
+  modeCard: {
+    width: "47%",
+    flexGrow: 1,
+    backgroundColor: colors.elev1,
+    borderRadius: radius.lg,
+    padding: spacing.md + 2,
+    borderWidth: 1,
+    borderColor: colors.border,
+    gap: 6,
+  },
+  modeIcon: { width: 38, height: 38, borderRadius: radius.md, alignItems: "center", justifyContent: "center" },
+  modeTitle: { color: colors.onSurface, fontSize: type.base, fontFamily: font.bold },
+  modeSub: { color: colors.muted, fontSize: type.sm, fontFamily: font.regular },
   pickerRow: {
-    flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10,
-    paddingVertical: 14, paddingHorizontal: 10, borderRadius: 12,
+    flexDirection: "row", alignItems: "center", gap: spacing.md,
+    paddingVertical: spacing.md, paddingHorizontal: spacing.sm, borderRadius: radius.md,
   },
-  pickerName: { flex: 1, color: colors.onSurface, fontSize: 15, fontFamily: font.medium },
+  pickerIcon: { width: 32, height: 32, borderRadius: radius.sm + 2, alignItems: "center", justifyContent: "center" },
+  pickerName: { flex: 1, color: colors.onSurface, fontSize: type.md, fontFamily: font.medium },
   pickerRight: { flexDirection: "row", alignItems: "center", gap: 6 },
-  pickerCount: { color: colors.brandPrimary, fontSize: 13, fontFamily: font.bold },
+  pickerCount: { color: colors.brandPrimary, fontSize: type.sm, fontFamily: font.bold },
 }));

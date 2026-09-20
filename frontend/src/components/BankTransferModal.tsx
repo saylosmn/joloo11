@@ -4,9 +4,10 @@ import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
 import { PrimaryButton } from "@/src/components/ui";
 import { ApiError, api, imageUrl } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";

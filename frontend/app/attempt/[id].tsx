@@ -3,11 +3,13 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useQuery } from "@tanstack/react-query";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
 import { AttemptReview, type AttemptLike } from "@/src/components/AttemptReview";
-import { ErrorState, LoadingView, PrimaryButton } from "@/src/components/ui";
+import { ListSkeleton } from "@/src/components/Skeleton";
+import { ErrorState, PrimaryButton } from "@/src/components/ui";
 import { api } from "@/src/lib/api";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
@@ -18,14 +20,21 @@ export default function AttemptDetailScreen() {
   const { colors } = useTheme();
   const { id } = useLocalSearchParams<{ id: string }>();
 
-  const { data, isLoading, isError, refetch } = useQuery<AttemptLike>({
+  const { data, isLoading, refetch } = useQuery<AttemptLike>({
     queryKey: ["attempt", id],
     queryFn: () => api.get(`/attempts/${id}`),
   });
 
   const Header = (
     <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-      <Pressable testID="attempt-back" onPress={() => router.back()} hitSlop={10} style={styles.hBtn}>
+      <Pressable
+        testID="attempt-back"
+        onPress={() => router.back()}
+        hitSlop={10}
+        style={styles.hBtn}
+        accessibilityRole="button"
+        accessibilityLabel="Буцах"
+      >
         <Ionicons name="chevron-back" size={24} color={colors.onSurface} />
       </Pressable>
       <Text style={styles.hTitle}>Шалгалтын дүн</Text>
@@ -37,10 +46,10 @@ export default function AttemptDetailScreen() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.surface }}>
         {Header}
-        <LoadingView />
+        <ListSkeleton rows={4} header={false} rowHeight={110} />
       </View>
     );
-  if (isError || !data)
+  if (!data)
     return (
       <View style={{ flex: 1, backgroundColor: colors.surface }}>
         {Header}

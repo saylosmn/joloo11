@@ -59,9 +59,10 @@ function showLogin() {
       <div id="google-signin-btn"></div>
       ${!webClientId ? '<p style="color:var(--danger);font-size:.8rem;margin-top:12px">Google нэвтрэлт тохируулагдаагүй</p>' : ''}
       <div class="login-features">
-        <div class="login-feat"><div class="login-feat-icon">📝</div>600+ асуулт</div>
+        <div class="login-feat"><div class="login-feat-icon">📝</div>800+ асуулт</div>
         <div class="login-feat"><div class="login-feat-icon">📊</div>Статистик</div>
         <div class="login-feat"><div class="login-feat-icon">🎯</div>Шалгалт</div>
+        <div class="login-feat"><div class="login-feat-icon">🏆</div>36 бүлэг</div>
       </div>
       <div id="login-download" style="margin-top:24px"></div>
     </div>`;
@@ -117,7 +118,9 @@ function renderHeader() {
     </a>
     ${user?.isPro ? '<span class="badge badge-pro">PRO</span>' : ''}
     <span class="user-name">${esc(name)}</span>
-    ${pic ? `<img class="avatar" src="${esc(pic)}" alt="">` : ''}`;
+    ${pic ? `<img class="avatar" src="${esc(pic)}" alt="">` : ''}
+    <button class="theme-toggle" id="theme-toggle" onclick="toggleTheme()" title="Горим солих">☀️</button>`;
+  updateThemeIcon();
   fetch(API + '/download/check').then(r => r.json()).then(d => {
     const btn = $('#header-dl-btn');
     if (btn && d.available) btn.style.display = '';
@@ -871,5 +874,43 @@ function copyText(text) {
   navigator.clipboard.writeText(text).then(() => toast('Хуулагдлаа!')).catch(() => {});
 }
 
+// ── Theme toggle ───────────────────────────────────────────
+function toggleTheme() {
+  const html = document.documentElement;
+  const current = html.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  html.setAttribute('data-theme', next);
+  localStorage.setItem('theme', next);
+  updateThemeIcon();
+  const mc = document.querySelector('meta[name="theme-color"]');
+  if (mc) mc.content = next === 'dark' ? '#0c0e1a' : '#f0f2f8';
+}
+
+function updateThemeIcon() {
+  const btn = $('#theme-toggle');
+  if (!btn) return;
+  const theme = document.documentElement.getAttribute('data-theme');
+  btn.textContent = theme === 'dark' ? '🌙' : '☀️';
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('theme');
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    const mc = document.querySelector('meta[name="theme-color"]');
+    if (mc) mc.content = saved === 'dark' ? '#0c0e1a' : '#f0f2f8';
+  }
+  updateThemeIcon();
+}
+
+// ── Header scroll effect ────────────────────────────────────
+let lastScroll = 0;
+window.addEventListener('scroll', () => {
+  const header = $('#app-header');
+  if (!header) return;
+  header.classList.toggle('scrolled', window.scrollY > 10);
+}, { passive: true });
+
 // ── Init ────────────────────────────────────────────────────
+initTheme();
 initApp();

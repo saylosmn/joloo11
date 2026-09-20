@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { ScrollView, Text, View } from "react-native";
+import { useEffect } from "react";
+import { ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
 import { AttemptReview } from "@/src/components/AttemptReview";
 import { ErrorState, LoadingView, PrimaryButton } from "@/src/components/ui";
 import { api } from "@/src/lib/api";
@@ -28,6 +31,16 @@ export default function ExamResultScreen() {
   });
 
   const result = handedOver ?? fetched.data;
+
+  // A short celebratory / consoling tap the moment the score lands.
+  useEffect(() => {
+    if (!result) return;
+    Haptics.notificationAsync(
+      result.passed
+        ? Haptics.NotificationFeedbackType.Success
+        : Haptics.NotificationFeedbackType.Warning,
+    ).catch(() => {});
+  }, [result]);
 
   if (needsFetch && fetched.isPending) return <LoadingView />;
 
@@ -62,6 +75,7 @@ export default function ExamResultScreen() {
     >
       <AttemptReview
         data={result}
+        celebrate
         footer={
           <View style={{ gap: 10, marginTop: 20 }}>
             <PrimaryButton

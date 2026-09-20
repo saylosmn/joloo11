@@ -3,19 +3,15 @@ import { useMutation } from "@tanstack/react-query";
 import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-  ActivityIndicator,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
+import { LoadingWheel, TrafficLightIcon } from "@/src/components/illustrations";
 import { LoadingView, PrimaryButton } from "@/src/components/ui";
 import { ApiError, api } from "@/src/lib/api";
 import { useAuth, type User } from "@/src/lib/auth";
+import { isOnboarded } from "@/src/lib/onboarding";
 import { TOTAL_CATEGORIES, TOTAL_QUESTIONS } from "@/src/lib/content";
 import { useNameCheck } from "@/src/lib/use-name-check";
 import { font, makeStyles, useTheme } from "@/src/theme";
@@ -38,7 +34,11 @@ export default function Entry() {
 function RedirectHome() {
   const router = useRouter();
   useEffect(() => {
-    router.replace("/(tabs)");
+    // First run after sign-in goes through the intro; afterwards straight home.
+    isOnboarded()
+      // cast: expo-router regenerates typed routes on the next dev-server run
+      .then((done) => router.replace((done ? "/(tabs)" : "/onboarding") as never))
+      .catch(() => router.replace("/(tabs)"));
   }, [router]);
   return <LoadingView />;
 }
@@ -56,7 +56,7 @@ function LoginScreen() {
       >
         <View style={[styles.loginInner, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 40 }]}>
           <View style={styles.brandBadge}>
-            <Ionicons name="car-sport" size={40} color="#FFFFFF" />
+            <TrafficLightIcon size={72} />
           </View>
           <Text style={styles.loginTitle}>Замын хөдөлгөөний{"\n"}дүрмийн шалгалт</Text>
           <Text style={styles.loginSubtitle}>
@@ -81,7 +81,7 @@ function LoginScreen() {
               ]}
             >
               {signingIn ? (
-                <ActivityIndicator color="#1E293B" />
+                <LoadingWheel size={24} color="#1E293B" />
               ) : (
                 <>
                   <Ionicons name="logo-google" size={20} color="#EA4335" />

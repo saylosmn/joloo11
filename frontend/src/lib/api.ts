@@ -1,4 +1,6 @@
-// Lightweight API client. Holds the session token in memory + secure storage.
+// Lightweight API client. Holds the session token in memory + secure storage,
+// and reports reachability to the offline store so the UI can react to it.
+import { setOnline } from "@/src/lib/offline";
 import { storage } from "@/src/utils/storage";
 
 const BASE = process.env.EXPO_PUBLIC_BACKEND_URL;
@@ -29,7 +31,13 @@ export class ApiError extends Error {
     super(message);
     this.status = status;
   }
+  /** Status 0 means the request never reached the backend. */
+  get isOffline() {
+    return this.status === 0;
+  }
 }
+
+export const OFFLINE_MESSAGE = "Интернэт холболт алга байна";
 
 export async function apiFetch<T = any>(
   path: string,
@@ -41,7 +49,17 @@ export async function apiFetch<T = any>(
     ...(options.headers as Record<string, string>),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${BASE}/api${path}`, { ...options, headers });
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE}/api${path}`, { ...options, headers });
+  } catch {
+    // fetch only rejects when the request never made it out — no signal, DNS
+    // failure, server unreachable. Anything else arrives as an HTTP status.
+    setOnline(false);
+    throw new ApiError(0, OFFLINE_MESSAGE);
+  }
+  setOnline(true);
   const text = await res.text();
   let data: any = null;
   try {

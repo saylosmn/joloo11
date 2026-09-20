@@ -1,19 +1,26 @@
 import Ionicons from "@react-native-vector-icons/ionicons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Modal, Pressable, ScrollView, Text, View } from "react-native";
+import { Pressable, ScrollView, View } from "react-native";
+import Animated, { FadeIn, FadeOut } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { Text } from "@/src/components/AppText";
 import { AnswerOption } from "@/src/components/AnswerOption";
+import { AnsweredPill, ExamTimer } from "@/src/components/ExamTimer";
+import { LoadingTrafficLight } from "@/src/components/illustrations";
 import { ProModal } from "@/src/components/ProModal";
+import { ConfirmDialog, Sheet } from "@/src/components/Sheet";
+import { QuestionSplit } from "@/src/components/QuestionSplit";
+import { QuestionImage } from "@/src/components/ZoomableImage";
 import { EmptyState, LoadingView, PrimaryButton } from "@/src/components/ui";
 import { ApiError, api, imageUrl } from "@/src/lib/api";
 import { useAuth } from "@/src/lib/auth";
 import { setExamResult, type ExamResult } from "@/src/lib/examStore";
 import { prefetchAhead } from "@/src/lib/prefetch";
-import { font, makeStyles, useTheme } from "@/src/theme";
+import { useResponsive } from "@/src/lib/responsive";
+import { font, makeStyles, radius, spacing, type, useTheme } from "@/src/theme";
 
 type Q = {
   question_id: string;
@@ -47,7 +54,9 @@ export default function ExamSession() {
   const [elapsed, setElapsed] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [quitOpen, setQuitOpen] = useState(false);
+  const [gridOpen, setGridOpen] = useState(false);
   const [proOpen, setProOpen] = useState(false);
+  const { contentWidthStyle } = useResponsive();
   const scrollRef = useRef<ScrollView>(null);
 
   // The server owns the question set and the clock. Starting again while a
@@ -146,7 +155,14 @@ export default function ExamSession() {
         : null;
   const categoryName = session?.category_name ?? null;
 
-  if (loading) return <LoadingView label="Шалгалт бэлдэж байна..." />;
+  if (loading) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <LoadingTrafficLight size={80} />
+        <Text style={{ color: colors.muted, fontFamily: "System", fontSize: 15 }}>Шалгалт бэлдэж байна...</Text>
+      </View>
+    );
+  }
 
   if (gated) {
     return (
@@ -173,24 +189,42 @@ export default function ExamSession() {
   }
 
   const current = questions[idx];
-  const mins = Math.floor(remaining / 60);
-  const secs = remaining % 60;
-  const low = remaining < 5 * 60;
   const answeredCount = Object.keys(answers).length;
+  const totalSeconds = session?.durationSeconds ?? 25 * 60;
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.surface }}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Pressable testID="exam-quit" onPress={() => setQuitOpen(true)} hitSlop={10} style={styles.hBtn}>
+        <Pressable
+          testID="exam-quit"
+          onPress={() => setQuitOpen(true)}
+          hitSlop={10}
+          style={styles.hBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Шалгалтаас гарах"
+        >
           <Ionicons name="close" size={24} color={colors.onSurface} />
         </Pressable>
-        <View style={[styles.timer, { backgroundColor: low ? colors.errorSubtle : colors.surfaceTertiary }]} testID="exam-timer">
-          <Ionicons name="time-outline" size={16} color={low ? colors.error : colors.onSurfaceTertiary} />
-          <Text style={[styles.timerText, { color: low ? colors.error : colors.onSurfaceTertiary }]}>
-            {String(mins).padStart(2, "0")}:{String(secs).padStart(2, "0")}
-          </Text>
+
+        <ExamTimer remaining={remaining} total={totalSeconds} testID="exam-timer" />
+
+        <View style={styles.headerRight}>
+          <AnsweredPill answered={answeredCount} total={questions.length} />
+          <Pressable
+            testID="exam-open-grid"
+            onPress={() => setGridOpen(true)}
+            hitSlop={10}
+            style={styles.hBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Асуултын жагсаалт нээх"
+          >
+            <Ionicons name="grid-outline" size={20} color={colors.brandPrimary} />
+          </Pressable>
         </View>
-        <Text style={styles.counter}>{idx + 1}/{questions.length}</Text>
+      </View>
+
+      <View style={styles.progressWrap}>
+        <View style={[styles.progressFill, { width: `${((idx + 1) / questions.length) * 100}%` }]} />
       </View>
 
       {session?.resumed ? (
@@ -207,24 +241,39 @@ export default function ExamSession() {
         </View>
       ) : null}
 
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {current.imageUrl ? (
-          <Image source={{ uri: imageUrl(current.imageUrl) }} style={styles.image} contentFit="contain" transition={150} />
-        ) : null}
-        <Text style={styles.qNum}>Асуулт {idx + 1}</Text>
-        <Text style={styles.question} testID="exam-question-text">{current.questionText}</Text>
-        <View style={styles.options}>
-          {current.options.map((o) => (
-            <AnswerOption
-              key={o.key}
-              testID={`option-${o.key}`}
-              optionKey={o.key}
-              text={o.text}
-              state={answers[current.question_id] === o.key ? "selected" : "default"}
-              onPress={() => pick(current.question_id, o.key)}
-            />
-          ))}
-        </View>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={[styles.content, contentWidthStyle]}
+        showsVerticalScrollIndicator={false}
+      >
+        <Animated.View key={current.question_id} entering={FadeIn.duration(220)} exiting={FadeOut.duration(120)}>
+          <QuestionSplit
+            image={
+              current.imageUrl ? (
+                <QuestionImage
+                  uri={imageUrl(current.imageUrl)}
+                  testID="exam-question-image"
+                  style={{ marginBottom: spacing.lg }}
+                />
+              ) : null
+            }
+          >
+          <Text style={styles.qNum}>Асуулт {idx + 1}</Text>
+          <Text style={styles.question} testID="exam-question-text">{current.questionText}</Text>
+          <View style={styles.options} accessibilityRole="radiogroup">
+            {current.options.map((o) => (
+              <AnswerOption
+                key={o.key}
+                testID={`option-${o.key}`}
+                optionKey={o.key}
+                text={o.text}
+                state={answers[current.question_id] === o.key ? "selected" : "default"}
+                onPress={() => pick(current.question_id, o.key)}
+              />
+            ))}
+          </View>
+          </QuestionSplit>
+        </Animated.View>
       </ScrollView>
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 12 }]}>
@@ -247,57 +296,121 @@ export default function ExamSession() {
         </View>
       </View>
 
-      <Modal visible={quitOpen} transparent animationType="fade" onRequestClose={() => setQuitOpen(false)}>
-        <View style={styles.confirmBackdrop}>
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>Шалгалтаас гарах уу?</Text>
-            <Text style={styles.confirmSub}>
-              Гарсан ч энэ шалгалт өдрийн эрхээс тоологдсон хэвээр үлдэнэ. Хариултууд хадгалагдсан
-              тул буцаж орвол үргэлжлүүлэх боломжтой.
-            </Text>
-            <View style={{ gap: 10, marginTop: 16 }}>
-              <PrimaryButton
-                testID="quit-keep"
-                title="Дараа үргэлжлүүлнэ"
-                variant="secondary"
-                onPress={() => {
-                  setQuitOpen(false);
-                  router.back();
-                }}
-              />
-              <PrimaryButton
-                testID="quit-abandon"
-                title="Шалгалтыг цуцлах"
-                variant="danger"
-                loading={abandon.isPending}
-                onPress={() => abandon.mutate()}
-              />
-              <PrimaryButton title="Үргэлжлүүлэх" onPress={() => setQuitOpen(false)} />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmDialog
+        visible={quitOpen}
+        onClose={() => setQuitOpen(false)}
+        testID="exam-quit-dialog"
+        icon={<Ionicons name="exit-outline" size={34} color={colors.warning} />}
+        title="Шалгалтаас гарах уу?"
+        message="Гарсан ч энэ шалгалт өдрийн эрхээс тоологдсон хэвээр үлдэнэ. Хариултууд хадгалагдсан тул буцаж орвол үргэлжлүүлэх боломжтой."
+        actions={[
+          { label: "Үргэлжлүүлэх", onPress: () => setQuitOpen(false) },
+          {
+            label: "Дараа үргэлжлүүлнэ",
+            variant: "secondary",
+            testID: "quit-keep",
+            onPress: () => {
+              setQuitOpen(false);
+              router.back();
+            },
+          },
+          {
+            label: "Шалгалтыг цуцлах",
+            variant: "danger",
+            testID: "quit-abandon",
+            loading: abandon.isPending,
+            onPress: () => abandon.mutate(),
+          },
+        ]}
+      />
 
-      <Modal visible={confirmOpen} transparent animationType="fade" onRequestClose={() => setConfirmOpen(false)}>
-        <View style={styles.confirmBackdrop}>
-          <View style={styles.confirmBox}>
-            <Text style={styles.confirmTitle}>Шалгалтыг дуусгах уу?</Text>
-            <Text style={styles.confirmSub}>{answeredCount}/{questions.length} асуултад хариулсан байна.</Text>
-            <View style={{ gap: 10, marginTop: 16 }}>
-              <PrimaryButton
-                testID="confirm-submit"
-                title="Тийм, дуусгах"
-                loading={submit.isPending}
-                onPress={() => {
-                  setConfirmOpen(false);
-                  submit.mutate(false);
-                }}
-              />
-              <PrimaryButton title="Үргэлжлүүлэх" variant="secondary" onPress={() => setConfirmOpen(false)} />
-            </View>
-          </View>
+      <ConfirmDialog
+        visible={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        testID="exam-submit-dialog"
+        icon={
+          <Ionicons
+            name={answeredCount === questions.length ? "checkmark-done-circle" : "alert-circle"}
+            size={34}
+            color={answeredCount === questions.length ? colors.success : colors.warning}
+          />
+        }
+        title="Шалгалтыг дуусгах уу?"
+        message={
+          answeredCount === questions.length
+            ? `Бүх ${questions.length} асуултад хариулсан байна.`
+            : `${answeredCount}/${questions.length} асуултад хариулсан. Үлдсэн ${questions.length - answeredCount} асуулт буруу тоологдоно.`
+        }
+        actions={[
+          {
+            label: "Тийм, дуусгах",
+            testID: "confirm-submit",
+            loading: submit.isPending,
+            onPress: () => {
+              setConfirmOpen(false);
+              submit.mutate(false);
+            },
+          },
+          { label: "Үргэлжлүүлэх", variant: "secondary", onPress: () => setConfirmOpen(false) },
+        ]}
+      />
+
+      <Sheet
+        visible={gridOpen}
+        onClose={() => setGridOpen(false)}
+        title="Асуулт руу шилжих"
+        testID="exam-grid-sheet"
+      >
+        <View style={styles.gridLegend}>
+          <LegendDot color={colors.brandPrimary} label="Одоо" />
+          <LegendDot color={colors.success} label="Хариулсан" />
+          <LegendDot color={colors.surfaceTertiary} label="Хоосон" />
         </View>
-      </Modal>
+        <View style={styles.grid}>
+          {questions.map((q, i) => {
+            const done = answers[q.question_id] != null;
+            const isCurrent = i === idx;
+            return (
+              <Pressable
+                key={q.question_id}
+                testID={`exam-grid-${i + 1}`}
+                accessibilityRole="button"
+                accessibilityLabel={`${i + 1}-р асуулт${done ? ", хариулсан" : ", хариулаагүй"}`}
+                onPress={() => {
+                  setIdx(i);
+                  setGridOpen(false);
+                }}
+                style={[
+                  styles.gridCell,
+                  {
+                    backgroundColor: done ? colors.successSubtle : colors.surfaceTertiary,
+                    borderColor: isCurrent ? colors.brandPrimary : "transparent",
+                  },
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.gridCellText,
+                    { color: done ? colors.onSuccessSubtle : colors.onSurfaceTertiary },
+                  ]}
+                >
+                  {i + 1}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      </Sheet>
+    </View>
+  );
+}
+
+function LegendDot({ color, label }: { color: string; label: string }) {
+  const styles = useStyles();
+  return (
+    <View style={styles.legendItem}>
+      <View style={[styles.legendDot, { backgroundColor: color }]} />
+      <Text style={styles.legendText}>{label}</Text>
     </View>
   );
 }
@@ -307,34 +420,45 @@ const useStyles = makeStyles((colors) => ({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingBottom: 10,
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.surfaceSecondary,
   },
-  hBtn: { width: 44, height: 40, alignItems: "center", justifyContent: "center" },
-  timer: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 999 },
-  timerText: { fontSize: 16, fontFamily: font.extrabold },
-  counter: { color: colors.muted, fontSize: 14, fontFamily: font.bold, width: 44, textAlign: "right" },
+  hBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 2 },
+  progressWrap: { height: 3, backgroundColor: colors.surfaceTertiary },
+  progressFill: { height: 3, backgroundColor: colors.brandPrimary },
   resumeBar: {
-    flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, paddingVertical: 7,
+    flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: spacing.gutter, paddingVertical: 7,
     backgroundColor: colors.brandTertiary,
   },
-  resumeText: { color: colors.onBrandTertiary, fontSize: 12, fontFamily: font.semibold },
+  resumeText: { color: colors.onBrandTertiary, fontSize: type.sm, fontFamily: font.semibold },
   catBar: {
-    flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 20, paddingVertical: 8,
+    flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: spacing.gutter, paddingVertical: spacing.sm,
     backgroundColor: colors.brandTertiary,
   },
-  catBarText: { color: colors.onBrandTertiary, fontSize: 13, fontFamily: font.semibold, flex: 1 },
-  content: { padding: 20, paddingBottom: 24 },
-  image: { width: "100%", height: 200, borderRadius: 14, backgroundColor: colors.surfaceTertiary, marginBottom: 16 },
-  qNum: { color: colors.brandPrimary, fontSize: 13, fontFamily: font.bold, marginBottom: 6 },
-  question: { color: colors.onSurface, fontSize: 17, lineHeight: 26, fontFamily: font.semibold, marginBottom: 20 },
-  options: { gap: 12 },
-  footer: { paddingHorizontal: 20, paddingTop: 10, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surfaceSecondary },
-  navRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  navBtn: { width: 52, height: 52, borderRadius: 14, backgroundColor: colors.surfaceTertiary, alignItems: "center", justifyContent: "center" },
-  confirmBackdrop: { flex: 1, backgroundColor: colors.overlay, alignItems: "center", justifyContent: "center", padding: 32 },
-  confirmBox: { width: "100%", backgroundColor: colors.surfaceSecondary, borderRadius: 20, padding: 22 },
-  confirmTitle: { color: colors.onSurface, fontSize: 18, fontFamily: font.bold },
-  confirmSub: { color: colors.muted, fontSize: 14, marginTop: 6, fontFamily: font.regular },
+  catBarText: { color: colors.onBrandTertiary, fontSize: type.sm, fontFamily: font.semibold, flex: 1 },
+  content: { padding: spacing.gutter, paddingBottom: spacing.xl },
+  qNum: { color: colors.brandPrimary, fontSize: type.sm, fontFamily: font.bold, marginBottom: 6 },
+  question: { color: colors.onSurface, fontSize: type.lg, lineHeight: 26, fontFamily: font.semibold, marginBottom: spacing.xl },
+  options: { gap: spacing.md },
+  footer: {
+    paddingHorizontal: spacing.gutter, paddingTop: spacing.md,
+    borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.surfaceSecondary,
+  },
+  navRow: { flexDirection: "row", alignItems: "center", gap: spacing.md },
+  navBtn: {
+    width: 52, height: 52, borderRadius: radius.md,
+    backgroundColor: colors.surfaceTertiary, alignItems: "center", justifyContent: "center",
+  },
+  gridLegend: { flexDirection: "row", gap: spacing.lg, marginBottom: spacing.md },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 6 },
+  legendDot: { width: 10, height: 10, borderRadius: 3 },
+  legendText: { color: colors.muted, fontSize: type.sm, fontFamily: font.medium },
+  grid: { flexDirection: "row", flexWrap: "wrap", gap: spacing.sm + 2, paddingBottom: spacing.md },
+  gridCell: {
+    width: 46, height: 46, borderRadius: radius.md,
+    alignItems: "center", justifyContent: "center", borderWidth: 2,
+  },
+  gridCellText: { fontSize: type.md, fontFamily: font.bold },
 }));

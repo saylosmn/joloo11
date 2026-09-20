@@ -4,8 +4,11 @@
 
 import { reloadAppAsync } from "expo";
 import { Component, type ErrorInfo, type PropsWithChildren, useState } from "react";
-import { Platform, Pressable, ScrollView, Text, View } from "react-native";
+import { Platform, Pressable, ScrollView, View } from "react-native";
 
+import { Text } from "@/src/components/AppText";
+import { ErrorTriangle } from "@/src/components/illustrations";
+import { reportError } from "@/src/lib/report-error";
 import { makeStyles } from "@/src/theme";
 
 type ErrorBoundaryState = { error: Error | null };
@@ -19,6 +22,8 @@ export class ErrorBoundary extends Component<PropsWithChildren, ErrorBoundarySta
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error("[ErrorBoundary] render crash:", error, info.componentStack ?? "");
+    // Send it home, so crashes are visible to us and not only to the user.
+    reportError(error, { fatal: true, screen: "render" });
   }
 
   resetError = (): void => {
@@ -49,6 +54,7 @@ function ErrorFallback({ error, resetError }: { error: Error; resetError: () => 
   return (
     <View style={styles.container} testID="error-fallback">
       <View style={styles.content}>
+        <ErrorTriangle size={100} />
         <Text style={styles.title}>Something went wrong</Text>
         <Text style={styles.message}>Please reload the app to continue.</Text>
         {__DEV__ ? <Text style={styles.devMessage}>{error.message}</Text> : null}

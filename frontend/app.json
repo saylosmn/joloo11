@@ -3,7 +3,7 @@
     "name": "ЗХД Шалгалт",
     "slug": "zhd-shalgalt",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": [
       "zhdshalgalt",
@@ -18,10 +18,10 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#2563EB"
       },
       "package": "mn.zhdshalgalt.app",
-      "versionCode": 2
+      "versionCode": 4
     },
     "web": {
       "bundler": "metro",
@@ -34,9 +34,13 @@
         "expo-splash-screen",
         {
           "image": "./assets/images/splash-image.png",
-          "imageWidth": 200,
+          "imageWidth": 180,
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#F8FAFC",
+          "dark": {
+            "image": "./assets/images/splash-image.png",
+            "backgroundColor": "#0B1120"
+          }
         }
       ],
       "expo-font",
@@ -44,7 +48,16 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-status-bar",
-      "@react-native-vector-icons/ionicons"
+      "@react-native-vector-icons/ionicons",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#2563EB",
+          "defaultChannel": "study-reminders"
+        }
+      ],
+      "expo-audio"
     ],
     "experiments": {
       "typedRoutes": true
@@ -59,7 +72,10 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/e5c3c6e8-1eb9-4c19-9e6e-f3642d091acc"
+      "url": "https://u.expo.dev/e5c3c6e8-1eb9-4c19-9e6e-f3642d091acc",
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
     }
   }
 }
