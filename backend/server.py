@@ -1,8 +1,9 @@
-from fastapi import FastAPI, APIRouter, Header, HTTPException, Request, Query
+from fastapi import FastAPI, APIRouter, Header, HTTPException, Request, Query, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, RedirectResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import UpdateOne
 import os
@@ -10,12 +11,15 @@ import re
 import random
 import logging
 import httpx
+import time
+from collections import defaultdict
 from pathlib import Path
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime, timezone, timedelta
 import secrets
 import uuid
+import hashlib
 
 from google_auth import GoogleAuthError, build_verifier, profile_from_claims
 from qpay_client import QPayClient, QPayError
@@ -87,8 +91,57 @@ BANK_TRANSFER_ENABLED = bool(BANK_ACCOUNT_NUMBER and BANK_ACCOUNT_NAME and BANK_
 
 IMAGES_DIR = ROOT_DIR / "data" / "images"
 
-app = FastAPI()
+app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 api_router = APIRouter(prefix="/api")
+
+
+# ============================ Security Middleware ============================
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        response.headers["Cache-Control"] = "no-store"
+        return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    """Simple in-memory rate limiter. Tracks requests per IP per minute."""
+    def __init__(self, app, rpm: int = 120, auth_rpm: int = 10):
+        super().__init__(app)
+        self.rpm = rpm
+        self.auth_rpm = auth_rpm
+        self._hits: dict[str, list[float]] = defaultdict(list)
+
+    def _clean(self, key: str, now: float):
+        cutoff = now - 60
+        self._hits[key] = [t for t in self._hits[key] if t > cutoff]
+
+    async def dispatch(self, request: Request, call_next):
+        ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        path = request.url.path
+
+        is_auth = "/auth/" in path and request.method == "POST"
+        limit = self.auth_rpm if is_auth else self.rpm
+        key = f"{ip}:auth" if is_auth else ip
+
+        self._clean(key, now)
+        if len(self._hits[key]) >= limit:
+            return Response(
+                content='{"detail":"Хэт олон хүсэлт. Түр хүлээнэ үү."}',
+                status_code=429,
+                media_type="application/json",
+            )
+        self._hits[key].append(now)
+        return await call_next(request)
+
+
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware, rpm=200, auth_rpm=15)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
@@ -204,7 +257,7 @@ NAME_RE = re.compile(r"^[A-Za-z0-9_]{3,20}$")
 # ============================ Auth ============================
 async def issue_session(user_id: str) -> str:
     """Mint our own opaque session token. Google is only ever used to prove identity."""
-    token = secrets.token_urlsafe(32)
+    token = secrets.token_urlsafe(48)
     await db.user_sessions.insert_one({
         "session_token": token,
         "user_id": user_id,
@@ -262,15 +315,27 @@ async def auth_google(body: GoogleSignIn):
     return {"session_token": token, "user": user}
 
 
+_code_attempts: dict[str, list[float]] = defaultdict(list)
+CODE_MAX_ATTEMPTS = 5
+CODE_WINDOW = 300  # 5 minutes
+
+
 @api_router.post("/auth/code-login")
-async def auth_code_login(body: CodeLoginRequest):
+async def auth_code_login(body: CodeLoginRequest, request: Request):
     """Login with a 4-digit access code assigned by the admin via Telegram."""
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    _code_attempts[ip] = [t for t in _code_attempts[ip] if t > now - CODE_WINDOW]
+    if len(_code_attempts[ip]) >= CODE_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="Хэт олон оролдлого. 5 минут хүлээнэ үү.")
+
     code = body.code.strip()
-    if not code or len(code) != 4:
+    if not code or len(code) != 4 or not code.isdigit():
         raise HTTPException(status_code=400, detail="4 оронтой код оруулна уу")
 
     entry = await db.access_codes.find_one({"code": code})
     if not entry:
+        _code_attempts[ip].append(now)
         raise HTTPException(status_code=401, detail="Код буруу байна")
 
     if entry.get("user_id"):
@@ -1663,7 +1728,7 @@ async def handle_admin_command(chat_id, text):
 @api_router.post("/telegram/webhook")
 async def telegram_webhook(request: Request):
     secret = request.headers.get("X-Telegram-Bot-Api-Secret-Token")
-    if TELEGRAM_WEBHOOK_SECRET and secret != TELEGRAM_WEBHOOK_SECRET:
+    if TELEGRAM_WEBHOOK_SECRET and not secrets.compare_digest(secret or "", TELEGRAM_WEBHOOK_SECRET):
         raise HTTPException(status_code=403, detail="forbidden")
     try:
         update = await request.json()
