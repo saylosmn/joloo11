@@ -11,6 +11,25 @@ const { View, Text, ScrollView, FlatList, Image } = require("react-native");
 const identity = (value) => value;
 const noop = () => {};
 
+// Reanimated 4 shared values carry a get/set pair next to `.value`, and
+// @gorhom/bottom-sheet reads them that way. Mirror the shape or the sheet
+// throws while mounting.
+function makeShared(initial) {
+  const sv = {
+    value: initial,
+    get: () => sv.value,
+    set: (next) => {
+      sv.value = typeof next === "function" ? next(sv.value) : next;
+    },
+    modify: (fn) => {
+      sv.value = fn ? fn(sv.value) : sv.value;
+    },
+    addListener: noop,
+    removeListener: noop,
+  };
+  return sv;
+}
+
 function createAnimatedComponent(Component) {
   return React.forwardRef((props, ref) => React.createElement(Component, { ...props, ref }));
 }
@@ -23,6 +42,12 @@ const Animated = {
   Image: createAnimatedComponent(Image),
   createAnimatedComponent,
   call: noop,
+  useEvent: (handler) => handler,
+  useHandler: (handlers) => ({ context: {}, doDependenciesDiffer: false, useWeb: false, handlers }),
+  // @gorhom/bottom-sheet calls this at import time; Reanimated 4 ships it as a
+  // no-op, so the mock needs it too or the module throws on load.
+  addWhitelistedUIProps: noop,
+  addWhitelistedNativeProps: noop,
 };
 
 // Entering/exiting animation builders — every method returns the builder, so
@@ -60,7 +85,8 @@ module.exports = {
   default: Animated,
   ...Animated,
 
-  useSharedValue: (initial) => ({ value: initial }),
+  useSharedValue: makeShared,
+  makeMutable: makeShared,
   useAnimatedStyle: (fn) => {
     try {
       return fn();
@@ -68,9 +94,24 @@ module.exports = {
       return {};
     }
   },
-  useDerivedValue: (fn) => ({ value: fn() }),
+  useDerivedValue: (fn) => makeShared(fn()),
   useAnimatedScrollHandler: () => noop,
   useAnimatedRef: () => ({ current: null }),
+  useEvent: (handler) => handler,
+  useHandler: (handlers) => ({ context: {}, doDependenciesDiffer: false, useWeb: false, handlers }),
+  useComposedEventHandler: (handlers) => handlers,
+  useAnimatedReaction: noop,
+  useAnimatedKeyboard: () => makeShared(0),
+  useFrameCallback: () => ({ setActive: noop, isActive: false }),
+  useWorkletCallback: (fn) => fn,
+  useReducedMotion: () => false,
+  useScrollViewOffset: () => makeShared(0),
+  scrollTo: noop,
+  measure: () => null,
+  dispatchCommand: noop,
+  createWorkletRuntime: () => ({}),
+  ReduceMotion: { System: "system", Always: "always", Never: "never" },
+  KeyboardState: { UNKNOWN: 0, OPENING: 1, OPEN: 2, CLOSING: 3, CLOSED: 4 },
   useAnimatedProps: (fn) => {
     try {
       return fn();

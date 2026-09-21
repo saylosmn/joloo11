@@ -40,9 +40,29 @@ export function Sheet({
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const ref = useRef<BottomSheetModal>(null);
-  const points = useMemo(() => snapPoints, [snapPoints]);
+
+  // Callers pass the snap points inline (`snapPoints={["85%"]}`), so the array
+  // is a new object on every render and memoising on it changes nothing. The
+  // bottom sheet re-reads its layout whenever this prop's identity changes, and
+  // a sheet that fetches while opening — ProModal asks for the plan and the
+  // limits — re-rendered mid-animation and snapped straight back shut. Key the
+  // memo on the contents so the array stays the same object.
+  const pointsKey = snapPoints?.join("|");
+  const points = useMemo(() => (pointsKey ? pointsKey.split("|") : undefined), [pointsKey]);
+
+  // The sheet reports every dismissal, including the one we ask for when the
+  // parent sets `visible` to false. Telling the parent to close again from
+  // there would undo state it has just set — ProModal opening a payment sheet,
+  // for one — so only a dismissal the user made is passed on.
+  const visibleRef = useRef(visible);
+  const handleDismiss = useCallback(() => {
+    if (visibleRef.current) onClose();
+  }, [onClose]);
 
   useEffect(() => {
+    // Recorded before the dismissal is asked for, so the callback above can
+    // tell the two apart.
+    visibleRef.current = visible;
     if (isWeb) return;
     if (visible) ref.current?.present();
     else ref.current?.dismiss();
@@ -112,7 +132,7 @@ export function Sheet({
       ref={ref}
       snapPoints={points}
       enableDynamicSizing={!points}
-      onDismiss={onClose}
+      onDismiss={handleDismiss}
       backdropComponent={renderBackdrop}
       handleIndicatorStyle={{ backgroundColor: colors.borderStrong, width: 40 }}
       maxDynamicContentSize={Dimensions.get("window").height * 0.85}
