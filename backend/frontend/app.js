@@ -7,14 +7,19 @@ let config = null;
 let currentPage = 'home';
 
 // ── API helper ──────────────────────────────────────────────
+// Нэвтрэх хүсэлтүүд: 401 нь сесс дууссан гэсэн үг биш, харин "код буруу" гэсэн
+// хариу тул дэлгэцийг дахин зурахгүй — алдааг нэвтрэх форм дээр нь үзүүлнэ.
+const AUTH_PATHS = ['/auth/google', '/auth/code-login'];
+
 async function api(path, opts = {}) {
   const headers = { 'Content-Type': 'application/json', ...(opts.headers || {}) };
   if (token) headers['Authorization'] = `Bearer ${token}`;
   const res = await fetch(API + path, { ...opts, headers });
-  if (res.status === 401) { logout(); throw new Error('unauthorized'); }
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail || `Алдаа (${res.status})`);
+    const message = err.detail || `Алдаа (${res.status})`;
+    if (res.status === 401 && !AUTH_PATHS.some(a => path.startsWith(a))) logout();
+    throw new Error(message);
   }
   return res.json();
 }
@@ -718,20 +723,15 @@ function showLogin() {
         <div class="code-form-box">
           <p class="code-form-label">4 оронтой код</p>
           <div style="display:flex;gap:8px;justify-content:center" id="code-digits-row">
-            <input class="code-digit" type="tel" maxlength="1" data-idx="0" oninput="codeDigitInput(this,0)" onkeydown="codeDigitKey(event,0)">
-            <input class="code-digit" type="tel" maxlength="1" data-idx="1" oninput="codeDigitInput(this,1)" onkeydown="codeDigitKey(event,1)">
-            <input class="code-digit" type="tel" maxlength="1" data-idx="2" oninput="codeDigitInput(this,2)" onkeydown="codeDigitKey(event,2)">
-            <input class="code-digit" type="tel" maxlength="1" data-idx="3" oninput="codeDigitInput(this,3)" onkeydown="codeDigitKey(event,3)">
+            ${[0, 1, 2, 3].map(i => `
+            <input class="code-digit" type="tel" inputmode="numeric" maxlength="1" data-idx="${i}"
+                   aria-label="Кодын ${i + 1}-р орон"
+                   ${i === 0 ? 'autocomplete="one-time-code"' : 'autocomplete="off"'}
+                   oninput="codeDigitInput(this,${i})" onkeydown="codeDigitKey(event,${i})" onpaste="codeDigitPaste(event)">`).join('')}
           </div>
-          <p id="code-error" style="color:var(--danger);font-size:.8rem;text-align:center;margin:0;display:none"></p>
+          <p id="code-error" class="code-error-text" style="display:none"></p>
           <button onclick="submitCodeLogin()" id="code-submit-btn" class="code-submit-btn">Нэвтрэх</button>
         </div>
-      </div>
-      <div class="login-features">
-        <div class="login-feat"><div class="login-feat-icon">📝</div>800+ асуулт</div>
-        <div class="login-feat"><div class="login-feat-icon">📊</div>Дэлгэрэнгүй статистик</div>
-        <div class="login-feat"><div class="login-feat-icon">🎯</div>Жинхэнэ шалгалт</div>
-        <div class="login-feat"><div class="login-feat-icon">🏆</div>36 бүлэг</div>
       </div>
       <div id="login-download" style="margin-top:24px;width:100%;max-width:320px"></div>
       <button class="theme-toggle" id="login-theme-toggle" onclick="toggleTheme()" style="position:fixed;top:16px;right:16px;z-index:10" title="Горим солих">☀️</button>
@@ -764,40 +764,106 @@ async function handleGoogleResponse(response) {
   }
 }
 
-function showCodeLoginForm() {
-  const form = document.getElementById('code-login-form');
-  if (form) form.style.display = form.style.display === 'none' ? 'block' : 'none';
+const CODE_LEN = 4;
+
+function codeDigitEls() {
+  return Array.from(document.querySelectorAll('.code-digit'));
 }
 
-function codeDigitInput(el, idx) {
-  el.value = el.value.replace(/\D/g, '').slice(0, 1);
-  if (el.value && idx < 3) {
-    const next = document.querySelectorAll('.code-digit')[idx + 1];
-    if (next) next.focus();
+function showCodeLoginForm() {
+  const form = document.getElementById('code-login-form');
+  if (!form) return;
+  const open = form.style.display === 'none';
+  form.style.display = open ? 'block' : 'none';
+  if (open) {
+    clearCodeError();
+    codeDigitEls()[0]?.focus();
   }
 }
 
+function clearCodeError() {
+  const errEl = document.getElementById('code-error');
+  if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+  codeDigitEls().forEach(d => d.classList.remove('invalid'));
+}
+
+function showCodeError(msg) {
+  const errEl = document.getElementById('code-error');
+  if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  codeDigitEls().forEach(d => d.classList.add('invalid'));
+  const row = document.getElementById('code-digits-row');
+  if (row) {
+    row.classList.remove('shake-once');
+    void row.offsetWidth;              // дахин сэргээж анимацийг эхнээс нь тоглуулна
+    row.classList.add('shake-once');
+  }
+}
+
+/** Оруулсан кодыг сервер рүү явуулахаас өмнө шалгана. Алдаагүй бол null. */
+function validateCode(code) {
+  if (!code) return 'Кодоо оруулна уу';
+  if (/\D/.test(code)) return 'Зөвхөн тоо оруулна уу';
+  if (code.length < CODE_LEN) return `${CODE_LEN} оронтой кодоо бүтэн оруулна уу`;
+  return null;
+}
+
+function currentCode() {
+  return codeDigitEls().map(d => d.value).join('');
+}
+
+function fillCodeDigits(text, from = 0) {
+  const nums = text.replace(/\D/g, '').slice(0, CODE_LEN - from).split('');
+  const digits = codeDigitEls();
+  nums.forEach((n, i) => { if (digits[from + i]) digits[from + i].value = n; });
+  const nextIdx = Math.min(from + nums.length, CODE_LEN - 1);
+  digits[nextIdx]?.focus();
+}
+
+function codeDigitInput(el, idx) {
+  clearCodeError();
+  const raw = el.value.replace(/\D/g, '');
+  if (raw.length > 1) { el.value = ''; fillCodeDigits(raw, idx); return; }
+  el.value = raw;
+  if (el.value && idx < CODE_LEN - 1) codeDigitEls()[idx + 1]?.focus();
+}
+
+function codeDigitPaste(e) {
+  const text = (e.clipboardData || window.clipboardData)?.getData('text') || '';
+  if (!text) return;
+  e.preventDefault();
+  clearCodeError();
+  fillCodeDigits(text, 0);
+}
+
 function codeDigitKey(e, idx) {
-  if (e.key === 'Backspace') {
-    const digits = document.querySelectorAll('.code-digit');
-    if (!digits[idx].value && idx > 0) {
-      digits[idx - 1].focus();
-    }
+  const digits = codeDigitEls();
+  if (e.key === 'Backspace' && !digits[idx].value && idx > 0) {
+    digits[idx - 1].focus();
+  } else if (e.key === 'ArrowLeft' && idx > 0) {
+    e.preventDefault();
+    digits[idx - 1].focus();
+  } else if (e.key === 'ArrowRight' && idx < CODE_LEN - 1) {
+    e.preventDefault();
+    digits[idx + 1].focus();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    submitCodeLogin();
   }
 }
 
 async function submitCodeLogin() {
-  const digits = document.querySelectorAll('.code-digit');
-  const code = Array.from(digits).map(d => d.value).join('');
-  const errEl = document.getElementById('code-error');
+  const code = currentCode();
   const btn = document.getElementById('code-submit-btn');
 
-  if (code.length < 4) {
-    if (errEl) { errEl.textContent = '4 оронтой код оруулна уу'; errEl.style.display = 'block'; }
+  const invalid = validateCode(code);
+  if (invalid) {
+    showCodeError(invalid);
+    codeDigitEls()[Math.min(code.length, CODE_LEN - 1)]?.focus();
     return;
   }
-  if (errEl) errEl.style.display = 'none';
-  if (btn) { btn.disabled = true; btn.textContent = 'Уншиж байна...'; }
+
+  clearCodeError();
+  if (btn) { btn.disabled = true; btn.textContent = 'Шалгаж байна...'; }
 
   try {
     const data = await api('/auth/code-login', {
@@ -809,7 +875,10 @@ async function submitCodeLogin() {
     localStorage.setItem('token', token);
     showApp();
   } catch (e) {
-    if (errEl) { errEl.textContent = e.message || 'Нэвтрэхэд алдаа гарлаа'; errEl.style.display = 'block'; }
+    // Буруу код — мессежийг үзүүлээд талбарыг цэвэрлэж дахин оролдох боломж өгнө.
+    showCodeError(e.message || 'Код буруу байна');
+    codeDigitEls().forEach(d => { d.value = ''; });
+    codeDigitEls()[0]?.focus();
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = 'Нэвтрэх'; }
   }
@@ -1373,7 +1442,7 @@ function renderExamQuestion(dir) {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         ${last
-          ? `<button class="btn btn-accent" style="flex:1" onclick="confirmSubmitExam()">Шалгалт дуусгах</button>`
+          ? `<button class="btn btn-accent" style="flex:1" onclick="submitExam()">Шалгалт дуусгах</button>`
           : `<button class="btn btn-primary" style="flex:1" onclick="examGo(${index + 1})">Дараах
                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
              </button>`}
@@ -1438,15 +1507,15 @@ function confirmAbandon() {
   }
 }
 
-function confirmSubmitExam() {
-  const unanswered = examState.questions.filter(q => !examState.answers[q.question_id]).length;
-  let msg = 'Шалгалтаа дуусгах уу?';
-  if (unanswered) msg += ` (${unanswered} хариулаагүй асуулт байна)`;
-  if (confirm(msg)) submitExam();
-}
+// Дуусгахад асуухгүй — шууд илгээнэ. Дараалаад дарахад давхар илгээхээс сэргийлнэ.
+let examSubmitting = false;
 
 async function submitExam() {
+  if (!examState || examSubmitting) return;
+  examSubmitting = true;
   clearInterval(examTimer);
+  const btn = document.querySelector('.q-nav .btn-accent');
+  if (btn) { btn.disabled = true; btn.textContent = 'Илгээж байна...'; }
   try {
     const result = await api('/exam/submit', {
       method: 'POST',
@@ -1458,6 +1527,8 @@ async function submitExam() {
     toast(e.message);
     examState = null;
     nav('exam');
+  } finally {
+    examSubmitting = false;
   }
 }
 

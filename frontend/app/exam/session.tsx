@@ -52,7 +52,6 @@ export default function ExamSession() {
   const [idx, setIdx] = useState(0);
   const [picked, setPicked] = useState<Record<string, string>>({});
   const [elapsed, setElapsed] = useState(0);
-  const [confirmOpen, setConfirmOpen] = useState(false);
   const [quitOpen, setQuitOpen] = useState(false);
   const [gridOpen, setGridOpen] = useState(false);
   const [proOpen, setProOpen] = useState(false);
@@ -290,7 +289,13 @@ export default function ExamSession() {
             {idx < questions.length - 1 ? (
               <PrimaryButton testID="exam-next" title="Дараагийн" onPress={() => setIdx(idx + 1)} />
             ) : (
-              <PrimaryButton testID="exam-submit" title={`Дуусгах (${answeredCount}/${questions.length})`} onPress={() => setConfirmOpen(true)} />
+              <PrimaryButton
+                testID="exam-submit"
+                title={`Дуусгах (${answeredCount}/${questions.length})`}
+                loading={submit.isPending}
+                disabled={submit.isPending}
+                onPress={() => submit.mutate(false)}
+              />
             )}
           </View>
         </View>
@@ -321,37 +326,6 @@ export default function ExamSession() {
             loading: abandon.isPending,
             onPress: () => abandon.mutate(),
           },
-        ]}
-      />
-
-      <ConfirmDialog
-        visible={confirmOpen}
-        onClose={() => setConfirmOpen(false)}
-        testID="exam-submit-dialog"
-        icon={
-          <Ionicons
-            name={answeredCount === questions.length ? "checkmark-done-circle" : "alert-circle"}
-            size={34}
-            color={answeredCount === questions.length ? colors.success : colors.warning}
-          />
-        }
-        title="Шалгалтыг дуусгах уу?"
-        message={
-          answeredCount === questions.length
-            ? `Бүх ${questions.length} асуултад хариулсан байна.`
-            : `${answeredCount}/${questions.length} асуултад хариулсан. Үлдсэн ${questions.length - answeredCount} асуулт буруу тоологдоно.`
-        }
-        actions={[
-          {
-            label: "Тийм, дуусгах",
-            testID: "confirm-submit",
-            loading: submit.isPending,
-            onPress: () => {
-              setConfirmOpen(false);
-              submit.mutate(false);
-            },
-          },
-          { label: "Үргэлжлүүлэх", variant: "secondary", onPress: () => setConfirmOpen(false) },
         ]}
       />
 

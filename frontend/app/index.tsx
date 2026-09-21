@@ -16,6 +16,9 @@ import { TOTAL_CATEGORIES, TOTAL_QUESTIONS } from "@/src/lib/content";
 import { useNameCheck } from "@/src/lib/use-name-check";
 import { font, makeStyles, useTheme } from "@/src/theme";
 
+/** Админаас олгодог нэвтрэх кодын урт (backend: /auth/code-login). */
+const CODE_LEN = 4;
+
 export default function Entry() {
   const { user, loading } = useAuth();
 
@@ -48,23 +51,27 @@ function LoginScreen() {
   const insets = useSafeAreaInsets();
   const { login, codeLogin, signingIn, configError } = useAuth();
   const [showCodeLogin, setShowCodeLogin] = useState(false);
-  const [digits, setDigits] = useState(["", "", "", ""]);
+  const [digits, setDigits] = useState<string[]>(() => Array(CODE_LEN).fill(""));
   const [codeError, setCodeError] = useState<string | null>(null);
   const [codeLoading, setCodeLoading] = useState(false);
   const digitRefs = useRef<(TextInput | null)[]>([]);
 
   const handleDigitChange = (text: string, index: number) => {
     const cleaned = text.replace(/\D/g, "");
+    setCodeError(null);
+    const next = [...digits];
     if (!cleaned) {
-      const next = [...digits];
       next[index] = "";
       setDigits(next);
       return;
     }
-    const next = [...digits];
-    next[index] = cleaned[0];
+    // Бүтэн кодыг нэг нүдэнд буулгахад үлдсэн нүднүүд рүү тараана.
+    cleaned.slice(0, CODE_LEN - index).split("").forEach((d, i) => {
+      next[index + i] = d;
+    });
     setDigits(next);
-    if (index < 3) digitRefs.current[index + 1]?.focus();
+    const landed = Math.min(index + cleaned.length, CODE_LEN - 1);
+    digitRefs.current[landed]?.focus();
   };
 
   const handleDigitKeyPress = (e: any, index: number) => {
@@ -74,16 +81,32 @@ function LoginScreen() {
   };
 
   const fullCode = digits.join("");
-  const canSubmitCode = fullCode.length === 4;
+
+  /** Сервер рүү явуулахаас өмнөх шалгалт. Алдаагүй бол null. */
+  const validateCode = (code: string): string | null => {
+    if (!code) return "Кодоо оруулна уу";
+    if (/\D/.test(code)) return "Зөвхөн тоо оруулна уу";
+    if (code.length < CODE_LEN) return `${CODE_LEN} оронтой кодоо бүтэн оруулна уу`;
+    return null;
+  };
 
   const handleCodeSubmit = async () => {
-    if (!canSubmitCode) return;
+    if (codeLoading) return;
+    const invalid = validateCode(fullCode);
+    if (invalid) {
+      setCodeError(invalid);
+      digitRefs.current[Math.min(fullCode.length, CODE_LEN - 1)]?.focus();
+      return;
+    }
     setCodeError(null);
     setCodeLoading(true);
     try {
       await codeLogin(fullCode);
     } catch (e) {
+      // Буруу код — серверийн хариултыг үзүүлээд талбарыг цэвэрлэнэ.
       setCodeError(e instanceof ApiError ? e.message : "Нэвтрэхэд алдаа гарлаа");
+      setDigits(Array(CODE_LEN).fill(""));
+      digitRefs.current[0]?.focus();
     } finally {
       setCodeLoading(false);
     }
@@ -116,16 +139,18 @@ function LoginScreen() {
               <View>
                 <Text style={styles.codeLabel}>4 оронтой код</Text>
                 <View style={styles.codeRow}>
-                  {[0, 1, 2, 3].map((i) => (
+                  {Array.from({ length: CODE_LEN }, (_, i) => (
                     <TextInput
                       key={i}
+                      testID={`code-digit-${i}`}
                       ref={(r) => { digitRefs.current[i] = r; }}
                       value={digits[i]}
                       onChangeText={(t) => handleDigitChange(t, i)}
                       onKeyPress={(e) => handleDigitKeyPress(e, i)}
+                      onSubmitEditing={handleCodeSubmit}
                       keyboardType="number-pad"
                       maxLength={1}
-                      style={styles.codeInput}
+                      style={[styles.codeInput, codeError ? styles.codeInputError : null]}
                       textAlign="center"
                       selectTextOnFocus
                     />
@@ -133,14 +158,15 @@ function LoginScreen() {
                 </View>
               </View>
 
-              {codeError ? <Text style={styles.codeError}>{codeError}</Text> : null}
+              {codeError ? <Text testID="code-login-error" style={styles.codeError}>{codeError}</Text> : null}
 
               <Pressable
-                disabled={!canSubmitCode || codeLoading}
+                testID="code-login-submit"
+                disabled={codeLoading}
                 onPress={handleCodeSubmit}
                 style={({ pressed }) => [
                   styles.googleBtn,
-                  { opacity: !canSubmitCode || pressed || codeLoading ? 0.7 : 1, marginTop: 8 },
+                  { opacity: pressed || codeLoading ? 0.7 : 1, marginTop: 8 },
                 ]}
               >
                 {codeLoading ? (
@@ -398,6 +424,7 @@ const useStyles = makeStyles((colors) => ({
     fontSize: 28,
     fontFamily: font.extrabold,
   },
+  codeInputError: { borderColor: "#FCA5A5", backgroundColor: "rgba(248,113,113,0.18)" },
   codeError: { color: "#FCA5A5", fontSize: 13, textAlign: "center", fontFamily: font.medium },
   loginHint: { color: "rgba(255,255,255,0.7)", fontSize: 12, textAlign: "center", fontFamily: font.regular },
 

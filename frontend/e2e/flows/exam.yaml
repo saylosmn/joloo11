@@ -50,8 +50,6 @@ appId: mn.zhdshalgalt.app
 
 - tapOn:
     id: "exam-submit"
-- tapOn:
-    id: "confirm-submit"
 
 - assertVisible:
     id: "result-percent"
