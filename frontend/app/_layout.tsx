@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { ErrorBoundary } from "@/src/components/error-boundary";
+import { UpdateBanner } from "@/src/components/UpdateBanner";
 import { AuthProvider } from "@/src/lib/auth";
 import { initAccent } from "@/src/lib/accent";
 import { initMotionPreferences } from "@/src/lib/motion";
@@ -44,7 +45,7 @@ configureNotificationHandler();
 function StackNav() {
   const { colors, scheme } = useTheme();
   return (
-    <>
+    <View style={{ flex: 1 }}>
       <StatusBar style={scheme === "dark" ? "light" : "dark"} />
       <Stack
         screenOptions={{
@@ -53,7 +54,8 @@ function StackNav() {
           animation: "fade",
         }}
       />
-    </>
+      <UpdateBanner />
+    </View>
   );
 }
 
