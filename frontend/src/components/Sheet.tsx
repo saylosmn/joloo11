@@ -55,7 +55,20 @@ export function Sheet({
   // there would undo state it has just set — ProModal opening a payment sheet,
   // for one — so only a dismissal the user made is passed on.
   const visibleRef = useRef(visible);
+  // True only while the modal is actually mounted in the sheet provider. The
+  // effect below must not ask a sheet that is not mounted to dismiss: the
+  // library flips its internal status to DISMISSING and then calls forceClose
+  // on a BottomSheet it has not built yet, so nothing ever puts the status
+  // back — and its portal refuses to render at all while DISMISSING. The next
+  // present() then mounts nothing and the sheet is dead for the rest of the
+  // screen's life. Every screen renders its sheet closed first, so the very
+  // first effect run did exactly that: "PRO болох" never opened, on the first
+  // press or any after it. Closing the sheet by hand hit the same wall, since
+  // the parent's `visible = false` arrived after the sheet had already gone.
+  const presentedRef = useRef(false);
   const handleDismiss = useCallback(() => {
+    // Fired from the library's own unmount, so the modal really is gone.
+    presentedRef.current = false;
     if (visibleRef.current) onClose();
   }, [onClose]);
 
@@ -64,8 +77,13 @@ export function Sheet({
     // tell the two apart.
     visibleRef.current = visible;
     if (isWeb) return;
-    if (visible) ref.current?.present();
-    else ref.current?.dismiss();
+    if (visible) {
+      presentedRef.current = true;
+      ref.current?.present();
+    } else if (presentedRef.current) {
+      presentedRef.current = false;
+      ref.current?.dismiss();
+    }
   }, [visible]);
 
   const renderBackdrop = useCallback(

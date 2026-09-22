@@ -44,10 +44,11 @@ const Animated = {
   call: noop,
   useEvent: (handler) => handler,
   useHandler: (handlers) => ({ context: {}, doDependenciesDiffer: false, useWeb: false, handlers }),
-  // @gorhom/bottom-sheet calls this at import time; Reanimated 4 ships it as a
-  // no-op, so the mock needs it too or the module throws on load.
+  // @gorhom/bottom-sheet calls these at import time; Reanimated 4 ships them as
+  // no-ops, so the mock needs them too or the module throws on load.
   addWhitelistedUIProps: noop,
   addWhitelistedNativeProps: noop,
+  isWorkletRuntime: () => false,
 };
 
 // Entering/exiting animation builders — every method returns the builder, so

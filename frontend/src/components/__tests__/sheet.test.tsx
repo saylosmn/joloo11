@@ -4,10 +4,18 @@ import { Text } from "react-native";
 import { Sheet } from "@/src/components/Sheet";
 
 // The real bottom sheet needs an animation runtime Jest cannot drive, so it is
-// swapped for a stand-in that records what the sheet asks of it.
-const mockSeen: { snapPoints: (string[] | undefined)[]; dismiss: null | (() => void) } = {
+// swapped for a stand-in that records what the sheet asks of it. The stand-in
+// keeps the library's status machine, because that is the part the wrapper has
+// to stay on the right side of: a modal asked to dismiss before it was ever
+// presented gets stuck in DISMISSING, and while it is there the portal renders
+// nothing, no matter how often it is presented afterwards.
+const mockSeen: {
+  snapPoints: (string[] | undefined)[];
+  /** Simulates the user swiping the sheet away. */
+  swipeAway: null | (() => void);
+} = {
   snapPoints: [],
-  dismiss: null,
+  swipeAway: null,
 };
 
 jest.mock("@gorhom/bottom-sheet", () => {
@@ -17,15 +25,37 @@ jest.mock("@gorhom/bottom-sheet", () => {
   const { View } = require("react-native");
 
   const BottomSheetModal = React.forwardRef(function Modal(props: any, ref: any) {
-    const [shown, setShown] = React.useState(false);
+    const [mounted, setMounted] = React.useState(false);
+    const status = React.useRef("initial");
     mockSeen.snapPoints.push(props.snapPoints);
+
     const dismiss = () => {
-      setShown(false);
+      if (status.current === "presented") {
+        status.current = "dismissed";
+        setMounted(false);
+        props.onDismiss?.();
+        return;
+      }
+      // Nothing to close yet. The real library still flips to DISMISSING and
+      // then calls forceClose on a sheet it has not built, so the status never
+      // comes back.
+      status.current = "dismissing";
+    };
+
+    const present = () => {
+      if (status.current !== "dismissing") status.current = "presented";
+      setMounted(true);
+    };
+
+    mockSeen.swipeAway = () => {
+      status.current = "dismissed";
+      setMounted(false);
       props.onDismiss?.();
     };
-    mockSeen.dismiss = dismiss;
-    React.useImperativeHandle(ref, () => ({ present: () => setShown(true), dismiss }));
-    return shown ? <View>{props.children}</View> : null;
+
+    React.useImperativeHandle(ref, () => ({ present, dismiss }));
+    // The portal declines to render while the modal is dismissing.
+    return mounted && status.current !== "dismissing" ? <View>{props.children}</View> : null;
   });
 
   const passthrough = ({ children }: any) => <View>{children}</View>;
@@ -59,11 +89,12 @@ function Host({ visible, onClose, tick }: { visible: boolean; onClose: () => voi
 describe("Sheet", () => {
   beforeEach(() => {
     mockSeen.snapPoints = [];
-    mockSeen.dismiss = null;
+    mockSeen.swipeAway = null;
   });
 
   it("opens when the parent asks and keeps one snap-point array across renders", async () => {
     const onClose = jest.fn();
+    // Mounted closed first, the way every screen renders its sheet.
     const { rerender } = await render(<Host visible={false} onClose={onClose} />);
     expect(screen.queryByText(BODY)).toBeNull();
 
@@ -93,7 +124,22 @@ describe("Sheet", () => {
     await render(<Host visible onClose={onClose} />);
     await waitFor(() => expect(screen.getByText(BODY)).toBeTruthy());
 
-    await act(async () => mockSeen.dismiss?.());
+    await act(async () => mockSeen.swipeAway?.());
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens again after the user swiped it away", async () => {
+    const onClose = jest.fn();
+    const { rerender } = await render(<Host visible onClose={onClose} />);
+    await waitFor(() => expect(screen.getByText(BODY)).toBeTruthy());
+
+    // The sheet closes itself, then the parent's `visible = false` lands —
+    // asking a sheet that has already gone to dismiss would strand it.
+    await act(async () => mockSeen.swipeAway?.());
+    await rerender(<Host visible={false} onClose={onClose} />);
+    await waitFor(() => expect(screen.queryByText(BODY)).toBeNull());
+
+    await rerender(<Host visible onClose={onClose} />);
+    await waitFor(() => expect(screen.getByText(BODY)).toBeTruthy());
   });
 });
